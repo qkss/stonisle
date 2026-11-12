@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stonisle</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #c4d9ea; font: 14px/1.6 system-ui, sans-serif; color: #2b2233; }
+  canvas { display: block; }
+  #cross { position: fixed; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px; pointer-events: none;
+    background: linear-gradient(#fff, #fff) center/2px 100% no-repeat, linear-gradient(#fff, #fff) center/100% 2px no-repeat; mix-blend-mode: difference; }
+  #hud { position: fixed; left: 10px; top: 8px; font: 12px ui-monospace, monospace; background: #fffa; padding: 2px 8px; border-radius: 10px; pointer-events: none; }
+  #bar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: #2b2233cc; border-radius: 14px; pointer-events: none; }
+  #bar div, #grid div, #hot div, #equip div { width: 40px; height: 40px; border-radius: 8px; background: #fff2 center/cover; outline: 2px solid transparent; position: relative; }
+  #bar div { opacity: .7; pointer-events: auto; cursor: pointer; touch-action: manipulation; }
+  #bar div:focus-visible { outline-color: #ffd36b; }
+  #openBag { width: 44px; height: 44px; flex: 0 0 44px; margin: 0; padding: 5px; border: 1px solid #d7b77b88; border-radius: 8px; background: #59472e; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+  #openBag svg { display: block; width: 100%; height: 100%; }
+  #openBag:hover, #openBag:focus-visible { background: #80603d; outline: 2px solid #ffd36b; }
+  #sack { position: relative; }
+  #closeBag { position: fixed; z-index: 3; top: 12px; right: 12px; width: 44px; height: 44px; padding: 0; margin: 0; font-size: 25px; cursor: pointer; touch-action: manipulation; }
+  @media(max-width: 540px) { #bar { gap: 3px; padding: 4px; } #bar div { width: calc((100vw - 85px)/9); height: 38px; } #bag > #sack { max-width: 100vw; max-height: 90vh; overflow: auto; box-sizing: border-box; } }
+
+  #bar b, #grid b, #hot b { position: absolute; right: 3px; bottom: 0; font: 10px ui-monospace, monospace; color: #fff; text-shadow: 0 0 2px #000; }
+  /* 背包：皮革色面板，左角色 / 中格子 / 右合成 */
+  #bag > #sack { display: flex; gap: 22px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; box-sizing: border-box; padding: 20px 24px; background: #3b2e25; color: #f0e4d0; border: 3px solid #6b513a; border-radius: 16px; box-shadow: 0 12px 50px #000a, inset 0 0 0 2px #2a2019; }
+  #sack h3 { margin: 0 0 10px; font-size: 14px; letter-spacing: 2px; color: #e0b878; }
+  #sack h3 small { font-weight: normal; letter-spacing: 0; color: #a8957c; margin-left: 6px; }
+  #grid, #hot { display: grid; grid-template-columns: repeat(9, 40px); gap: 5px; }
+  #hot { margin-top: 14px; padding-top: 14px; border-top: 2px solid #5a4533; }
+  #equip { display: grid; gap: 5px; justify-content: center; }
+  #grid div, #hot div, #equip div { cursor: pointer; border-radius: 6px; background-color: #1d1712; box-shadow: inset 0 0 0 1px #6b513a, inset 0 2px 5px #000c; }
+  #grid div:hover, #hot div:hover, #equip div:hover { outline-color: #ffd36b88; }
+  #hot div.on { outline-color: #ffd36b; }
+  #equip span { position: static; display: block; text-align: center; line-height: 40px; font: 13px/40px system-ui; color: #7c6a56; text-shadow: none; }
+  #stats { margin-top: 12px; font-size: 13px; line-height: 1.9; white-space: nowrap; }
+  #stats b { color: #e0b878; font-weight: normal; margin-right: 6px; }
+  #craft { width: 250px; max-height: 300px; overflow-y: auto; padding-right: 4px; }
+  #hp { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); width: 240px; height: 14px; background: #2b2233cc; border-radius: 7px; overflow: hidden; pointer-events: none; }
+  #hpfill { height: 100%; background: linear-gradient(#e2574c, #b83a32); transition: width .2s; }
+  #hptxt { position: absolute; inset: 0; text-align: center; font: 10px/14px ui-monospace, monospace; color: #fff; text-shadow: 0 0 2px #000; }
+  #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s; background: radial-gradient(transparent 40%, #c0201899); }
+  #msg { position: fixed; left: 0; right: 0; top: 30%; text-align: center; font-size: 20px; color: #fff; text-shadow: 0 0 6px #000; pointer-events: none; }
+  #craft button { display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 4px; padding: 4px 8px; background: #ffffff14; color: inherit; text-align: left; font-size: 13px; }
+  #craft button:disabled { opacity: .4; cursor: default; }
+  #craft img { width: 24px; height: 24px; border-radius: 4px; background: #1d1712; }
+  #craft small { margin-left: auto; opacity: .7; }
+  #label { position: fixed; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); padding: 2px 12px; border-radius: 12px; background: #fffd; color: #2b2233; font: 600 18px/1.5 system-ui, sans-serif; pointer-events: none; }
+  #label:empty { display: none; }
+  #prog { position: fixed; left: 50%; top: 50%; margin: 14px 0 0 -20px; height: 4px; width: 0; background: #fff; border-radius: 2px; box-shadow: 0 0 2px #000; pointer-events: none; }
+  #bar div.on { outline-color: #ffd36b; opacity: 1; transform: translateY(-4px); }
+  #bar span { position: absolute; left: 3px; top: 0; font: 10px ui-monospace, monospace; color: #fff; text-shadow: 0 0 2px #000; }
+  #menu, #bag { position: fixed; inset: 0; display: grid; place-items: center; background: #2b223366; }
+  #menu.off, #bag.off { display: none; }
+  #card, #bag > div { background: #fdf6ec; border-radius: 18px; padding: 24px 32px; max-width: 360px; box-shadow: 0 10px 40px #0004; }
+  h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: 2px; color: #3d6b2c; }
+  h1 small { font-size: 13px; color: #8a6a44; letter-spacing: 1px; }
+  button { font: inherit; border: 0; border-radius: 10px; padding: 8px 18px; cursor: pointer; background: #3d6b2c; color: #fff; }
+  button#reset, button.link { background: none; color: #7a5a68; text-decoration: underline; padding: 8px; }
+  label { display: block; margin: 12px 0; }
+  input[type=range] { vertical-align: middle; accent-color: #3d6b2c; }
+  .material-mark { position: absolute; right: 1px; bottom: 1px; width: 15px; height: 13px; filter: drop-shadow(0 1px 1px #000); pointer-events: none; }
+  #sack, #craft { scrollbar-width: thin; scrollbar-color: #94734a #30251c; }
+  #sack::-webkit-scrollbar, #craft::-webkit-scrollbar { width: 7px; height: 7px; }
+  #sack::-webkit-scrollbar-track, #craft::-webkit-scrollbar-track { background: #30251c; border-radius: 8px; }
+  #sack::-webkit-scrollbar-thumb, #craft::-webkit-scrollbar-thumb { background: #94734a; border: 2px solid #30251c; border-radius: 8px; }
+  #sack::-webkit-scrollbar-corner { background: #30251c; }
+  #touchControls { display: none; position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; }
+  body.mobile.playing #touchControls { display: block; }
+  body.mobile canvas { touch-action: none; }
+  #touchControls button { width: 48px; height: 48px; padding: 0; margin: 0; background: #382e27b8; border: 1px solid #e9d4a677; color: #fff3d9; border-radius: 14px; pointer-events: auto; touch-action: none; font-size: 22px; }
+  #touchControls button.active { background: #a48046dd; border-color: #ffe4a8; }
+  #touchMove { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: calc(100px + env(safe-area-inset-bottom)); width: 128px; height: 128px; border-radius: 50%; box-sizing: border-box; border: 2px solid #e9d4a666; background: radial-gradient(circle, #ead5ac16 0 24%, transparent 25% 48%, #ead5ac20 49% 50%, transparent 51%), #382e2788; pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+  #touchMove::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #ead5ac88; box-shadow: 0 -53px #ead5ac88, 0 53px #ead5ac88, -53px 0 #ead5ac88, 53px 0 #ead5ac88; }
+  #touchStickThumb { position: absolute; width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 35% 25%,#d9bd87e6,#8d7048ed); border: 2px solid #f3dfb4aa; box-shadow: 0 3px 12px #0005; pointer-events: none; }
+  #touchMove.active { border-color: #ffe2a5bb; background-color: #57442eaa; }
+
+  #touchActions { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: calc(100px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2,48px); gap: 8px; }
+  #touchActions button { font-size: 14px; }
+  #touchActions [data-action="jump"] { grid-column: 1 / 3; justify-self: end; width: 60px; height: 60px; font-size: 23px; }
+  body.mobile #bar { bottom: max(12px, env(safe-area-inset-bottom)); }
+  body.mobile #menu #card { max-height: 85dvh; overflow: auto; box-sizing: border-box; }
+  body.mobile #bag > #sack { flex-wrap: wrap; justify-content: center; max-height: 85dvh; padding: 18px 12px; }
+  body.mobile #sack > section { max-width: 100%; }
+  body.mobile #grid, body.mobile #hot { grid-template-columns: repeat(9,minmax(0,1fr)); gap: 3px; }
+  body.mobile #grid div, body.mobile #hot div { width: min(36px,calc((100vw - 78px)/9)); height: 38px; }
+  body.mobile #craft { width: min(330px,calc(100vw - 70px)); }
+  #rotateHint { display: none; }
+  #bag { z-index: 20; }
+  #closeBag { z-index: 21; background: #ead6aa; color: #443222; border: 2px solid #93764e; box-shadow: 0 3px 12px #0005; }
+  @media (orientation: landscape) {
+    body.mobile #bar { gap: 4px; padding: 4px; }
+    body.mobile #bar div { width: 38px; height: 38px; }
+    body.mobile #hp { bottom: 65px; }
+    body.mobile #touchMove, body.mobile #touchActions { bottom: max(18px, env(safe-area-inset-bottom)); }
+    body.mobile #bag > #sack { flex-wrap: nowrap; justify-content: flex-start; gap: 16px; max-height: 88dvh; }
+    body.mobile #sack > section { flex-shrink: 0; }
+    body.mobile #grid, body.mobile #hot { grid-template-columns: repeat(9,32px); }
+    body.mobile #grid div, body.mobile #hot div { width: 32px; height: 32px; }
+    body.mobile #craft { width: 230px; max-height: 65dvh; }
+    body.mobile #stats { font-size: 12px; }
+  }
+  @media (orientation: landscape) and (max-width: 760px) { body.mobile #touchMove, body.mobile #touchActions { bottom: 86px; } }
+  @media (orientation: portrait) {
+    body.mobile #rotateHint { display: flex; position: fixed; inset: 0; z-index: 100; background: #28251ef5; color: #f5dfb0; align-items: center; justify-content: center; flex-direction: column; text-align: center; gap: 14px; padding: 24px; }
+    #rotateHint svg { width: 88px; height: 88px; }
+    body.mobile #touchControls { display: none; }
+  }
+  body:not(.entered) #bar, body:not(.entered) #hp, body:not(.entered) #hud, body:not(.entered) #cross, body:not(.entered) #label { display: none; }
+  [hidden] { display: none !important; }
+  #settingsBtn { position: fixed; right: max(14px,env(safe-area-inset-right)); top: max(12px,env(safe-area-inset-top)); z-index: 12; width: 44px; height: 44px; padding: 10px; background: #382e27bc; border: 1px solid #e9d4a666; color: #f5dfb0; touch-action: manipulation; }
+  #settingsBtn svg { width: 100%; height: 100%; display: block; }
+  #menu { z-index: 11; }
+  #launchCard { box-sizing: border-box; width: min(520px,calc(100vw - 40px)); max-height: 86dvh; overflow: auto; padding: 30px; border: 2px solid #937246; border-radius: 8px; color: #f1e2c7;
+    background: radial-gradient(ellipse at 50% 0,#77543344,transparent 70%),repeating-linear-gradient(2deg,#ffffff02 0 1px,transparent 1px 6px),linear-gradient(135deg,#3c3026,#241e19);
+    box-shadow: 0 20px 70px #0009,0 0 0 5px #211b17aa,inset 0 0 0 4px #231d18,inset 0 0 0 5px #b38b4633; scrollbar-width: thin; scrollbar-color: #917047 #2a221b; }
+  .launchHeading { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; padding-bottom: 20px; border-bottom: 1px solid #b5915344; }
+  .launchEmblem { width: 54px; height: 58px; flex-shrink: 0; filter: drop-shadow(0 4px 3px #0005); }
+  #launchCard h1 { margin: 0; color: #efd6a0; font-family: Georgia,serif; font-size: 36px; font-weight: 600; letter-spacing: 2px; text-shadow: 0 2px 0 #130f0c; }
+  #launchCard label { margin: 0 0 8px; color: #dfcaa6; font-size: 13px; }
+  #launchCard button { border-radius: 5px; min-height: 44px; transition: background .15s,border-color .15s; }
+  #launchCard button:focus-visible,#saveName:focus-visible { outline: 2px solid #ffe0a3; outline-offset: 3px; }
+  #launchCard #start,#saveSubmit { background: linear-gradient(#657447,#455333); border: 1px solid #a0a16b; color: #fff1d1; box-shadow: inset 0 1px #d6db9a33,0 3px 0 #172015; font-weight: 600; letter-spacing: 1px; }
+  #launchCard #start { width: 100%; margin-top: 22px; padding: 12px; }
+  #launchCard #start:hover:not(:disabled),#saveSubmit:hover { background: linear-gradient(#788650,#56643c); }
+  #card { box-sizing: border-box; width: min(580px,calc(100vw - 40px)); max-width: 580px; max-height: 86dvh; overflow: auto; padding: 24px 30px; color: #f1e2c7; border: 2px solid #937246; border-radius: 8px; color-scheme: dark;
+    background: radial-gradient(ellipse at 50% 0,#77543344,transparent 70%),repeating-linear-gradient(2deg,#ffffff02 0 1px,transparent 1px 6px),linear-gradient(135deg,#3c3026,#241e19);
+    box-shadow: 0 20px 70px #0009,0 0 0 5px #211b17aa,inset 0 0 0 4px #231d18,inset 0 0 0 5px #b38b4633; scrollbar-width: thin; scrollbar-color: #917047 #2a221b; }
+  .settingsHeading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #b5915344; }
+  #card h1 { margin: 0; color: #efd6a0; font: 600 30px Georgia,serif; letter-spacing: 1px; text-shadow: 0 2px #130f0c; }
+  #card .settingsHelp { padding: 14px 16px; border: 1px solid #79614477; border-radius: 5px; background: #18141055; color: #c9b99d; font-size: 13px; line-height: 1.75; }
+  #card label { margin: 16px 0; color: #e0cfb2; }
+  #card small { color: #baa78b; }
+  #card button { min-height: 40px; border: 1px solid #8d754b; border-radius: 5px; background: #56452e; color: #ead5a7; text-decoration: none; padding: 8px 12px; margin: 3px 6px 3px 0; }
+  #card button:hover:not(:disabled) { background: #705a39; border-color: #c5a56c; }
+  #card button:disabled { opacity: .4; cursor: default; }
+  #card #closeSettings { flex-shrink: 0; width: 44px; height: 44px; padding: 0; margin: 0; font-size: 26px; background: #292219; color: #ead5a7; }
+  #card #reset { color: #e7a88c; border-color: #92614b; background: #57372b44; }
+  #card select { appearance: none; max-width: 100%; box-sizing: border-box; margin-left: 6px; padding: 9px 32px 9px 12px; min-height: 40px; font: inherit; color: #f0dfbd; border: 1px solid #94774d; border-radius: 4px; background: linear-gradient(45deg,transparent 50%,#d8bd83 50%) calc(100% - 15px) 50%/5px 5px no-repeat,linear-gradient(135deg,#d8bd83 50%,transparent 50%) calc(100% - 10px) 50%/5px 5px no-repeat,#211b16; box-shadow: inset 0 2px 4px #0003; }
+  #card select option { background: #2c241d; color: #f0dfbd; }
+  #card #wickVoice { width: min(340px,100%); }
+  #card input[type=checkbox] { appearance: none; display: inline-grid; place-content: center; width: 20px; height: 20px; margin: 0 8px 0 0; vertical-align: -4px; border: 1px solid #a58a5b; border-radius: 3px; background: #211b16; cursor: pointer; }
+  #card input[type=checkbox]:checked { background: #627344; border-color: #bfbd86; }
+  #card input[type=checkbox]:checked::after { content: ''; width: 9px; height: 5px; border-left: 2px solid #fff0ca; border-bottom: 2px solid #fff0ca; transform: translateY(-1px) rotate(-45deg); }
+  #card input[type=range] { appearance: none; width: min(180px,35vw); height: 8px; margin: 0 8px; border: 1px solid #8f7448; border-radius: 4px; background: #1e1a14; cursor: pointer; }
+  #card input[type=range]::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 4px; border: 2px solid #dfc58d; background: #788450; box-shadow: 0 2px 4px #0008; }
+  #card input[type=range]::-moz-range-thumb { width: 17px; height: 17px; border-radius: 4px; border: 2px solid #dfc58d; background: #788450; }
+  #card :is(button,input,select):focus-visible { outline: 2px solid #ffe0a3; outline-offset: 3px; }
+  #menu:has(#card:not([hidden])) { background: #100e0b33; place-items: stretch end; }
+  body:has(#card:not([hidden])) #settingsBtn { visibility: hidden; }
+  #menu #card { width: min(440px,100vw); max-width: none; height: 100dvh; max-height: 100dvh; border-radius: 0; border-width: 0 0 0 2px; padding: max(16px,env(safe-area-inset-top)) 16px max(12px,env(safe-area-inset-bottom)); overflow: hidden; display: flex; flex-direction: column; box-shadow: -16px 0 60px #0007,inset 4px 0 #231d18; }
+  #card .settingsHeading { flex-shrink: 0; margin-bottom: 12px; }
+  #card .settingsBody { display: flex; flex: 1; min-height: 0; gap: 10px; }
+  #card .settingsTabs { order: 2; display: flex; flex-direction: column; flex: 0 0 62px; gap: 6px; padding: 4px 0 0 8px; border-left: 1px solid #b5915344; overflow-y: auto; }
+  #card .settingsTabs button { flex: 0 0 auto; min-height: 58px; min-width: 0; margin: 0; padding: 7px 3px; font-size: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #211b1666; color: #c6b28e; border-color: #796144; }
+  #card .settingsTabs svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #card { font-size: 13px; }
+  #card .settingsHeading { padding-bottom: 10px; margin-bottom: 8px; }
+  #card h1 { font-size: 27px; }
+  #card label { margin: 13px 0; }
+  #card h2 { margin-top: 18px; padding-top: 16px; }
+  #card .settingsHint { margin-bottom: 12px; }
+  #card select { margin-left: 0; }
+  #card #wickVoice { display: block; width: 100%; margin-top: 8px; }
+  #card .settingsView { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+  #card .settingsView input { grid-column: 1 / -1; grid-row: 2; width: calc(100% - 4px); margin: 0 2px; }
+  #card .settingsTabs button[aria-selected=true] { background: linear-gradient(#657447,#455333); color: #fff1d1; border-color: #b3ab72; box-shadow: inset 3px 0 #d9c491; }
+  #card .settingsContent { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 8px 2px 16px; scrollbar-width: thin; scrollbar-color: #917047 #2a221b; }
+  #card h2 { margin: 26px 0 10px; padding-top: 20px; border-top: 1px solid #b5915333; color: #e1c58e; font-size: 14px; letter-spacing: .4px; }
+  #card section > h2:first-child { margin-top: 0; padding-top: 0; border: 0; }
+  #card .settingsHint { color: #baa78b; font-size: 12px; line-height: 1.7; margin: 8px 0 18px; }
+  #card #wickVoice { width: min(270px,100%); }
+  #card section:focus-visible { outline: 1px solid #b59a68; outline-offset: -1px; }
+  @media(max-height:540px) { #menu #card { width: min(420px,68vw); padding: 12px 14px; } #card .settingsHeading { margin-bottom: 8px; padding-bottom: 8px; } #card h1 { font-size: 25px; } #card .settingsBody { gap: 10px; } #card .settingsTabs { flex-basis: 62px; padding-left: 8px; } #card .settingsContent { padding-top: 14px; } }
+  #saveIntro { color: #c3ad8b; margin: 0 0 20px; font-size: 13px; }
+  #saveCards { display: grid; gap: 10px; }
+  .saveCard { display: flex; align-items: center; border: 1px solid #796144; background: #211b16a6; border-radius: 5px; padding: 5px; box-shadow: inset 0 1px 5px #0003; }
+  .saveCard.selected { border-color: #d1ae6b; background: linear-gradient(110deg,#66503377,#382d20); box-shadow: inset 3px 0 #d1ae6b,inset 0 0 0 1px #ba995e22; }
+  .saveCard:hover { border-color: #c3a46e; }
+  .saveChoose { display: flex; flex: 1; min-width: 0; align-items: center; gap: 12px; background: none; color: #f1e2c7; text-align: left; padding: 10px; }
+  .saveChoose .worldIcon { width: 42px; height: 42px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid #a48a55; border-radius: 4px; background: linear-gradient(145deg,#647347,#34432d); color: #e3d4a1; font-size: 26px; box-shadow: inset 0 0 0 3px #26332577; }
+  .saveChoose strong { display: block; overflow-wrap: anywhere; font-size: 16px; }
+  .saveChoose small { display: block; color: #baa78b; font-size: 11px; margin-top: 4px; }
+  .saveRename { background: transparent; color: #d0b782; padding: 10px; font-size: 12px; }
+  .saveRename:hover { background: #b5915322; color: #fff0c9; }
+  #newSave { width: 100%; margin-top: 12px; background: #211b1644; border: 1px dashed #93784e; color: #d4c19b; }
+  #newSave:hover { background: #b591531a; }
+  #saveForm { margin-top: 16px; padding: 16px; background: #18141088; border: 1px solid #796144; border-radius: 5px; }
+  #saveName { width: 100%; box-sizing: border-box; font: inherit; padding: 11px; border: 1px solid #957a50; border-radius: 4px; background: #211b16; color: #f6e6c7; box-shadow: inset 0 2px 5px #0005; }
+  #saveName::placeholder { color: #a89374; }
+  #saveError { color: #ffae91; font-size: 13px; margin: 6px 0; }
+  .saveFormActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  #saveCancel { color: #c9b38c; background: transparent; }
+  #start:disabled { opacity: .45; cursor: default; }
+  @media(max-height: 540px) { #launchCard { padding: 18px 24px; max-height: 90dvh; } .launchHeading { padding-bottom: 12px; margin-bottom: 12px; } #launchCard h1 { font-size: 28px; } .launchEmblem { width: 40px; height: 44px; } #saveIntro { margin-bottom: 12px; } #launchCard #start { margin-top: 14px; } }
+
+</style>
+</head>
+<body>
+<div id="rotateHint" role="status"><svg viewBox="0 0 80 80" aria-hidden="true"><rect x="12" y="23" width="56" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="3"/><path d="M22 15a28 28 0 0 1 42 1m-1-10 2 12-12-2M58 65a28 28 0 0 1-42-1m1 10-2-12 12 2" fill="none" stroke="currentColor" stroke-width="3"/></svg><strong>Rotate your device</strong><span>Play in landscape mode.</span></div>
+<div id="cross"></div>
+<div id="hud"></div>
+<div id="bar"></div>
+<div id="touchControls" aria-label="Touch controls">
+  <div id="touchMove" role="group" aria-label="Movement joystick"><span id="touchStickThumb" aria-hidden="true"></span></div>
+  <div id="touchActions">
+    <button data-action="jump" aria-label="Jump">↥</button>
+    <button data-action="dig" aria-label="Dig or attack">Dig</button>
+    <button data-action="place" aria-label="Place or use">Place</button>
+  </div>
+</div>
+<div id="prog"></div>
+<div id="label"></div>
+<div id="hp"><div id="hpfill"></div><div id="hptxt"></div></div>
+<div id="hurt"></div><div id="msg"></div>
+<div id="bag" class="off"><div id="sack"><button id="closeBag" type="button" aria-label="Close bag" title="Close bag">×</button>
+  <section><h3>Character</h3><div id="equip"></div><div id="stats"></div></section>
+  <section><h3>Bag<small>Click an item to hold it or wear it. E closes.</small></h3><div id="grid"></div><div id="hot"></div></section>
+  <section><h3>Make</h3><div id="craft"></div></section>
+</div></div>
+<button id="settingsBtn" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 2 4 0 .6 3 2 .9 2.7-1 2 3.4-2.2 2 .2 2.3 2.1 1.9-2 3.4-2.8-1-2 .9-.6 3h-4l-.6-3-2-.9-2.7 1-2-3.4 2.2-2-.2-2.3-2.1-1.9 2-3.4 2.8 1 2-.9Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+<div id="menu">
+  <div id="launchCard">
+    <div class="launchHeading"><svg class="launchEmblem" viewBox="0 0 60 64" aria-hidden="true"><path d="M4 19 30 5 56 19 56 47 30 61 4 47Z" fill="#7d5937" stroke="#c5a065" stroke-width="2"/><path d="m4 19 26 14 26-14L30 5Z" fill="#7d9050"/><path d="m30 33 26-14v28L30 61Z" fill="#4c3927"/><path d="m4 19 26 14 26-14v8L30 41 4 27Z" fill="#53653b"/><path d="m12 39 8 4m17 5 10-5M17 19l13 7 13-7" fill="none" stroke="#c5aa6c" stroke-width="2" opacity=".6"/></svg><h1>Stonisle</h1></div>
+    <p id="saveIntro">Choose your world.</p>
+    <div id="saveCards" aria-label="Saved worlds"></div>
+    <button id="newSave" class="newSave" type="button">＋ New world</button>
+    <form id="saveForm" hidden>
+      <label id="saveNameLabel" for="saveName">Name your first world</label>
+      <input id="saveName" maxlength="32" required autocomplete="off" placeholder="My island">
+      <p id="saveError" role="alert"></p>
+      <div class="saveFormActions"><button id="saveSubmit" type="submit">Create world</button><button id="saveCancel" type="button">Cancel</button></div>
+    </form>
+    <button id="start">Play</button>
+  </div>
+  <div id="card" hidden>
+    <div class="settingsHeading"><h1>Settings</h1><button id="closeSettings" type="button" aria-label="Close settings">×</button></div>
+    <div class="settingsBody">
+    <nav class="settingsTabs" role="tablist" aria-label="Settings categories" aria-orientation="vertical">
+      <button id="tab-graphics" role="tab" aria-controls="settings-graphics" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4M6 13l4-4 3 3 2-2 3 3"/></svg><span>Graphics</span></button>
+      <button id="tab-audio" role="tab" aria-controls="settings-audio" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4Z M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg><span>Audio</span></button>
+      <button id="tab-controls" role="tab" aria-controls="settings-controls" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10c3 0 4 3 4 7s-2 5-4 2H7c-2 3-4 2-4-2s1-7 4-7Z M8 10v4m-2-2h4"/><circle cx="16" cy="11" r=".7"/><circle cx="18" cy="13" r=".7"/></svg><span>Controls</span></button>
+      <button id="tab-world" role="tab" aria-controls="settings-world" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7Zm0 10L3 7m9 5 9-5m-9 5v10M7.5 4.5l9 5"/></svg><span>World</span></button>
+    </nav>
+    <div class="settingsContent">
+      <section id="settings-graphics" role="tabpanel" aria-labelledby="tab-graphics" tabindex="0">
+        <h2>Rendering</h2><p class="settingsHint">Balance detail and performance for your device.</p>
+        <label class="settingsView"><span>View distance</span><input id="view" type="range" min="2" max="8" step="1"> <span><span id="viewN"></span> chunks</span></label>
+        <label><input id="hq" type="checkbox"> High quality <small>(shadows, uses more battery)</small></label>
+        <h2>Texture pack</h2>
+        <label>Textures <select id="pack"><option value="auto">Auto</option><option value="std">Standard 64px</option><option value="fine">Fine 128px</option><option value="natural">Natural</option><option value="custom">Custom</option></select></label>
+        <button class="link" id="exp">Export PNG</button><button class="link" id="imp">Import PNG</button><input id="file" type="file" accept="image/png" hidden>
+      </section>
+      <section id="settings-audio" role="tabpanel" aria-labelledby="tab-audio" tabindex="0" hidden>
+        <h2>Speech &amp; companion</h2><p class="settingsHint">Choose what you hear while exploring.</p>
+        <label><input id="combatAudio" type="checkbox" checked> Combat sounds</label>
+        <label><input id="voice" type="checkbox"> Read aloud <small id="voiceNote"></small></label>
+        <div id="settingsVoice"></div>
+      </section>
+      <section id="settings-controls" role="tabpanel" aria-labelledby="tab-controls" tabindex="0" hidden>
+        <h2>How to play</h2><p class="settingsHint">Ladders: move forward to climb up, backward to climb down. Release to hold; jump to leave. The touch joystick works too.</p>
+    <div class="settingsHelp">Move: W A S D. Jump: Space.<br>Look: mouse or arrow keys.<br>Hold left click to dig. Left click to hit.<br>Right click to place a block or eat.<br>Keys 1–9 pick an item. E opens your bag.<br>Point at a thing to see its name.<br>Press V to hear it again. Shift + V is slow.<br>Dig logs and stone. Then make tools.<br>Wolves come at night. Make a torch.</div>
+        <p class="settingsHint">Touch screen: use the joystick to move, drag the view to look, and tap the action buttons. Tap a hotbar slot to select an item.</p>
+      </section>
+      <section id="settings-world" role="tabpanel" aria-labelledby="tab-world" tabindex="0" hidden>
+        <h2>Journal &amp; tasks</h2><div id="settingsCompanion"></div>
+        <h2>World management</h2><p class="settingsHint">Reset starts this world over. Your other worlds are kept.</p>
+        <button id="reset">Reset this world</button>
+      </section>
+    </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- ponytail: 开发期每次加载都带时间戳，免得浏览器缓存旧脚本；定版后换回普通 script 标签 -->
+<script>for (const f of ['core.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'creative.js', 'avatar.js']) document.write(`<script src="${f}?${Date.now()}"><\/script>`);</script>
+</body>
+</html>

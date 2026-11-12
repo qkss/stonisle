@@ -1,0 +1,93 @@
+{
+  "id": "natural",
+  "name": "自然写实",
+  "version": 1,
+  "terrain": {
+    "file": "stonisle-natural-128.png",
+    "tileSize": 128,
+    "columns": 32
+  },
+  "tools": {
+    "file": "tools-source.png",
+    "columns": 3,
+    "rows": 2,
+    "materials": [
+      "ash-wood",
+      "leather",
+      "flint",
+      "forged-iron",
+      "brass",
+      "torch-binding"
+    ]
+  },
+  "coverage": [
+    "terrain",
+    "held-tools",
+    "held-weapons",
+    "inventory-icons",
+    "building-blocks",
+    "mineral-blocks",
+    "furniture-surfaces"
+  ],
+  "note": "Documentary manifest. Runtime integration is in natural-tools.js and game.js; arbitrary manifest imports are not implemented.",
+  "expansion": {
+    "file": "expansion-source.png",
+    "columns": 6,
+    "rows": 5,
+    "firstTile": 17,
+    "appliedTiles": [
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "preservedProceduralTiles": [
+      17,
+      29,
+      30,
+      31
+    ]
+  },
+  "woodFamilies": {
+    "file": "wood-family-source.png",
+    "columns": 4,
+    "rows": 3,
+    "rowsBySpecies": [
+      "birch",
+      "walnut",
+      "cedar"
+    ],
+    "columnsBySurface": [
+      "bark",
+      "end-grain",
+      "door",
+      "chest"
+    ],
+    "atlasTiles": [
+      49,
+      60
+    ]
+  }
+}
