@@ -113,6 +113,7 @@
   const slots = save.slots || [0, 0, 0, 0, 0, 0, 0, 0, 0];     // 快捷栏 9 格放的物品
   const RECIPES = [ // [产物, 数量, {材料 id: 数量}]；工具不会坏，已有就不能再做
     [8, 4, { 6: 1 }], [10, 4, { 3: 4 }], [9, 4, { 2: 2, 4: 2 }],
+    [16, 1, { 8: 4 }], [17, 1, { 8: 4 }], [18, 1, { 8: 2 }], [153, 1, { 8: 3 }], // 木质工具：只用木板，砍一棵树就能做——木镐、木斧、木铲、木剑。比空手快一倍左右，比石器慢
     [PICK, 1, { 8: 2, 3: 3 }], [AXE, 1, { 8: 2, 3: 3 }], [SHOVEL, 1, { 8: 2, 3: 1 }], [SWORD, 1, { 8: 1, 3: 2 }],
     [TORCH, 1, { 8: 1, 11: 1 }], [PICK2, 1, { 8: 2, 12: 3 }], [SWORD2, 1, { 8: 1, 12: 2 }], // 煤 → 火把；铁 → 更快的镐、更狠的剑
     [40, 1, { 31: 2 }], [41, 1, { 31: 4 }], [42, 1, { 31: 2 }], [43, 1, { 12: 3 }], [44, 1, { 12: 6 }], [45, 1, { 12: 3 }],
@@ -137,7 +138,7 @@
   let time = save.time == null ? 60 : save.time;
   if(materialPreview&&new URLSearchParams(location.search).get('night')==='1')time=DAY*.82;
   // 挖掘耗时由 mining-rules.js 按工具与方块材质统一计算。
-  const DMG = { [PICK]: 2, [AXE]: 4, [SHOVEL]: 2, [SWORD]: 5, [PICK2]: 3, [SWORD2]: 10, 27: 6, 19: 2, 28: 4, 29: 12 }; // 19 钻镐 28 岩心镐 29 黑曜剑 // 27 长矛 // 空手及其他物品 1 点
+  const DMG = { [PICK]: 2, [AXE]: 4, [SHOVEL]: 2, [SWORD]: 5, [PICK2]: 3, [SWORD2]: 10, 27: 6, 19: 2, 28: 4, 29: 12, 17: 2, 153: 3 }; // 17 木斧 153 木剑（木镐、木铲和空手一样是 1） // 19 钻镐 28 岩心镐 29 黑曜剑 // 27 长矛 // 空手及其他物品 1 点
 
   // ---- 玩家 ----
   const W = 0.3, PH = 1.8, EYE = 1.62;
@@ -632,7 +633,7 @@
   document.body.appendChild(hitNotice);
   function give(id, n = 1) {
     inv[id] = (inv[id] || 0) + n;
-    if ((id < 31 || id === 32 || isBlock(id)) && !slots.includes(id)) { const i = slots.indexOf(0); if (i >= 0) slots[i] = id; } // 兽皮和装备不占快捷栏
+    if ((id < 31 || id === 32 || id === 153 || isBlock(id)) && !slots.includes(id)) { const i = slots.indexOf(0); if (i >= 0) slots[i] = id; } // 兽皮和装备不占快捷栏
     renderBar(); saveSoon();
   }
   function digStep(dt) {
@@ -1107,6 +1108,10 @@
   TOOLS[PICK2] = iron(TOOLS[PICK]); TOOLS[SWORD2] = iron(TOOLS[SWORD]);
   const recolor = (list, map) => list.map(b => [...b.slice(0, 6), map[b[6]] || b[6]]);
   Object.assign(TOOLS, {
+    16: recolor(TOOLS[PICK], { [IRON]: '#b98a52', [EDGE]: '#d8ad72', [STEEL]: '#8a5a2c' }),         // 木镐
+    17: recolor(TOOLS[AXE], { [IRON]: '#b98a52', [EDGE]: '#d8ad72', [STEEL]: '#8a5a2c' }),          // 木斧
+    18: recolor(TOOLS[SHOVEL], { [IRON]: '#b98a52', [EDGE]: '#d8ad72', [STEEL]: '#8a5a2c' }),       // 木铲
+    153: recolor(TOOLS[SWORD], { [IRON]: '#b98a52', [EDGE]: '#d8ad72', [GOLD]: '#6e4420' }),        // 木剑
     19: recolor(TOOLS[PICK], { [IRON]: '#fffaf0', [EDGE]: '#ffffff', [STEEL]: '#b88c50' }),          // 钻镐：虫牙做的镐头
     28: recolor(TOOLS[PICK], { [IRON]: '#8c8c8a', [EDGE]: '#ffb040', [STEEL]: '#5c5c5a' }),          // 岩心镐
     29: recolor(TOOLS[SWORD], { [IRON]: '#241c34', [EDGE]: '#c070ff', [GOLD]: '#4a3a6a' }),          // 黑曜剑
@@ -1135,7 +1140,7 @@
   const heldMat = new THREE.MeshLambertMaterial({ map: tex });
   let heldId = -1, swing = 0, heldHand=null;
   function beginSwing(){if(!hotbarActive)return;swing=.3;if(selectedItem()===SWORD||selectedItem()===SWORD2)CombatAudio.swing();}
-  const HELD_YAW = { [PICK]: 0.3, [PICK2]: 0.3, 19: 0.3, 28: 0.3, [AXE]: Math.PI + 0.3 }; // 镐头沿前后方向握持，镐尖顺着挥动方向
+  const HELD_YAW = { [PICK]: 0.3, [PICK2]: 0.3, 19: 0.3, 28: 0.3, 16: 0.3, [AXE]: Math.PI + 0.3, 17: Math.PI + 0.3 }; // 镐头沿前后方向握持，镐尖顺着挥动方向
   function setHeld(id) {
     if (id === heldId) return; heldId = id;
     holder.visible=id!==null;heldHand=null;
@@ -1184,8 +1189,8 @@
     const g = c.getContext('2d');
     if (isBlock(id)) g.drawImage(atlas, BLOCKS[id].tiles[1] * TS, 0, TS, TS, 0, 0, 40, 40);
     else {
-      const S = id >= 31 ? 58 : 44; // 工具斜着放；兽皮和装备正着放、画大些
-      g.translate(20, 20); if (id < 31) g.rotate(Math.PI / 4); g.lineJoin = 'round';
+      const tool = id < 31 || id === 153, S = tool ? 44 : 58; // 工具斜着放；兽皮和装备正着放、画大些
+      g.translate(20, 20); if (tool) g.rotate(Math.PI / 4); g.lineJoin = 'round';
       for (const pass of [0, 1]) for (const [w, h, l, x, y, z, col] of TOOLS[id]) {
         const bw = Math.max(w, l) * S, bh = h * S, bx = (x + z) * S - bw / 2, by = -(y - 0.44) * S - bh / 2;
         if (pass) {
@@ -1419,7 +1424,7 @@
     if (playing) Lang.look(h ? (window.Home && Home.label(h)) || itemName(h.torch?TORCH:world.get(h.x, h.y, h.z)) : '', t, [p.x, p.y + EYE, p.z], lookDir(), mobs, h ? h.t : 6); // 对准显示英文名
     if (window.ThirdPerson) ThirdPerson.apply(camera, dt); // 第三人称：把镜头退到身后，画出自己的小人（avatar.js）
     renderer.render(scene, camera);
-    const swordHeld=heldId===SWORD||heldId===SWORD2,miningHeld=[PICK,PICK2,AXE,SHOVEL].includes(heldId);
+    const swordHeld=[SWORD,SWORD2,29,153].includes(heldId),miningHeld=[PICK,PICK2,AXE,SHOVEL,16,17,18,19,28].includes(heldId);
     swing = Math.max(0, swing - dt*(swordHeld?.65:miningHeld?.78:1)); if (held && hotbarActive && !swing) beginSwing();
     const handX=Math.min(.5,handCam.aspect*(heldId===PICK||heldId===PICK2?.09:.24));
     holder.position.set(handX,-.43,-1);

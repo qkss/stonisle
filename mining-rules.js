@@ -19,6 +19,10 @@
   for(const id of [...Array.from({length:16},(_,i)=>160+i),180,181,182,...Array.from({length:15},(_,i)=>184+i),...Array.from({length:48},(_,i)=>200+i)])blocks[id]=['wood',id<184?2.4:1.5];
   // Unknown items, blocks, food and torches dig like bare hands.
   const tools={
+    16:{rock:.5,wood:1.1,soil:.95,sand:1,leaf:1.2}, // wooden pick：比空手快一倍，比石镐慢一半多
+    17:{rock:1.25,wood:.5,soil:1.1,sand:1.1,leaf:.7}, // wooden axe
+    18:{rock:1.35,wood:1.2,soil:.5,sand:.5,leaf:1}, // wooden shovel
+    153:{rock:1.5,wood:.95,soil:1.2,sand:1.2,leaf:.6}, // wooden sword
     20:{rock:.22,wood:1.1,soil:.9,sand:1,leaf:1.2}, // stone pick
     21:{rock:1.25,wood:.23,soil:1.1,sand:1.1,leaf:.6}, // stone axe
     22:{rock:1.35,wood:1.2,soil:.24,sand:.24,leaf:1}, // stone shovel

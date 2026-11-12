@@ -97,7 +97,7 @@
   function colors(lk, gear = []) { const l = clean(lk), body = GEAR[gear[1]] || (gear[1] ? ['#8a8a9a'] : null); return { skin: SKIN[l.skin], sleeve: body ? body[0] : SHIRT[l.shirt] }; }
   function hold(g, id) { // 右手里拿着的东西：工具用游戏里同一个模型，方块是一个小方块
     const arm = g.userData.swing[3]; if (g.userData.item) arm.remove(g.userData.item);
-    g.userData.sword = [23, 26, 29].includes(id); // 拿着剑：挥动是左右横扫，不是从上往下劈
+    g.userData.sword = [23, 26, 29, 153].includes(id); // 拿着剑：挥动是左右横扫，不是从上往下劈
     const item = g.userData.item = window.game && id ? game.itemMesh(id) : null; if (!item) return;
     const grip = new THREE.Group(); grip.add(item); grip.rotation.x = g.userData.sword ? -2.3 : -1.9; grip.position.set(0, -0.66, -0.02); grip.scale.setScalar(0.9); // 工具从手里向前伸出去（不是顺着胳膊往回指）：手垂着时指向前下方，手向前举时指向前上方
     arm.add(g.userData.item = grip);

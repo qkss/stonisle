@@ -12,7 +12,7 @@ window.Lang = (() => {
   ['door', 'door', 'door', 'door', 'window', 'window', 'bed', 'bed', 'red flower', 'yellow flower', 'blue flower', 'berry bush', 'berry bush', 'sapling'].forEach((n, i) => { BLOCK[60 + i] = n; }); // 家居与植物
   BLOCK[74] = BLOCK[75] = 'sign'; BLOCK[76] = 'chest'; BLOCK[96] = 'glow glass'; BLOCK[97] = 'ice lamp';
   Core.WOODS.forEach(w=>{for(let k=0;k<4;k++)BLOCK[w.ladder+k]=w.name+' ladder';BLOCK[w.log]=w.name+' log';BLOCK[w.plank]=w.name+' plank';BLOCK[w.chest]=w.name+' chest';for(let k=0;k<4;k++){BLOCK[w.door+k]=w.name+' door';BLOCK[w.stairs+k]=w.name+' stairs';}BLOCK[w.slab]=w.name+' slab';BLOCK[w.fence]=w.name+' fence';for(let k=0;k<4;k++)BLOCK[w.inverted+k]=w.name+' stairs';BLOCK[w.upperSlab]=w.name+' slab';BLOCK[w.doubleSlab]=w.name+' double slab';});
-  const ITEM = { 20: 'stone pickaxe', 21: 'stone axe', 22: 'stone shovel', 23: 'stone sword', 24: 'torch', 25: 'iron pickaxe', 26: 'iron sword',
+  const ITEM = { 16: 'wooden pickaxe', 17: 'wooden axe', 18: 'wooden shovel', 153: 'wooden sword', 20: 'stone pickaxe', 21: 'stone axe', 22: 'stone shovel', 23: 'stone sword', 24: 'torch', 25: 'iron pickaxe', 26: 'iron sword',
     27: 'spear', 30: 'raw meat', 31: 'hide', 32: 'berry', 33: 'clay', 34: 'scorpion shell', 35: 'vine', 36: 'tusk', 37: 'shade fur', 46: 'shell boots', 47: 'night cloak',
     38: 'bat wing', 39: 'black feather', 48: 'glide cape', 49: 'quill', 110: 'glow dust', 111: 'frost shard', 112: 'raw fish', 113: 'jelly', 114: 'crab shell', 115: 'crab meat', 120: 'crab helmet', 121: 'straw hat', 122: 'straw shirt', 123: 'straw pants', 124: 'straw sandals', 125: 'leather pants', 126: 'iron pants',
     127: 'alloy helmet', 128: 'alloy armor', 129: 'alloy pants', 131: 'alloy boots', 130: 'alloy ingot',
@@ -59,6 +59,7 @@ window.Lang = (() => {
     ruby: 'A ruby is red.', emerald: 'An emerald is green.', sapphire: 'A sapphire is blue.',
     cement: 'Cement makes a gray wall.', 'yellow brick': 'Yellow bricks look warm.', 'dark brick': 'Dark bricks look strong.',
     'light plank': 'Light planks are pale wood.', 'dark plank': 'Dark planks are brown wood.', 'red plank': 'Red planks are red wood.',
+    'wooden pickaxe': 'A wooden pickaxe is your first tool.', 'wooden axe': 'A wooden axe cuts logs.', 'wooden shovel': 'A wooden shovel digs dirt.', 'wooden sword': 'A wooden sword is light.',
     'stone pickaxe': 'Dig stone with a pickaxe.', 'stone axe': 'Cut logs with an axe.', 'stone shovel': 'Dig dirt with a shovel.', 'stone sword': 'A sword keeps you safe.',
     torch: 'A torch gives light at night.', 'iron pickaxe': 'An iron pickaxe is fast.', 'iron sword': 'An iron sword is strong.',
     'raw meat': 'Eat meat to get well.', hide: 'Hide comes from animals.', 'leather cap': 'Wear the cap on your head.', 'leather coat': 'The coat keeps you safe.',

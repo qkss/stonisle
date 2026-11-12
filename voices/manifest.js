@@ -976,6 +976,38 @@ window.VOICES = {
    "narrator/6193aa-32a152b039.mp3",
    2.43
   ],
+  "wooden pickaxe": [
+   "narrator/6193aa-e1572ddd84.mp3",
+   1.09
+  ],
+  "wooden pickaxe. A wooden pickaxe is your first tool.": [
+   "narrator/6193aa-a75e6f3979.mp3",
+   3.33
+  ],
+  "wooden axe": [
+   "narrator/6193aa-3a503fae6f.mp3",
+   0.98
+  ],
+  "wooden axe. A wooden axe cuts logs.": [
+   "narrator/6193aa-d6c6dcc687.mp3",
+   2.54
+  ],
+  "wooden shovel": [
+   "narrator/6193aa-473895ef55.mp3",
+   0.98
+  ],
+  "wooden shovel. A wooden shovel digs dirt.": [
+   "narrator/6193aa-8221495155.mp3",
+   2.79
+  ],
+  "wooden sword": [
+   "narrator/6193aa-ef6b9bc504.mp3",
+   1.05
+  ],
+  "wooden sword. A wooden sword is light.": [
+   "narrator/6193aa-e14c74660f.mp3",
+   2.47
+  ],
   "stone pickaxe": [
    "narrator/6193aa-8f714e1703.mp3",
    1.13
