@@ -92,7 +92,7 @@
   let pack = save.pack || 'auto';              // 材质包：auto（高画质用精细）| std | fine | custom
   const PACK = 'stonisle.pack.custom';         // 自定义材质包（一张 PNG 的 dataURL）单独存
   let sel = save.sel || 0;
-  let hotbarActive=save.hotbarActive!==false;
+  let hotbarActive=false; // 每次进游戏手都是收起的、物品栏不选中；按 1–9、滚轮或点一格才拿出来
   const selectedItem=()=>hotbarActive?(slots[sel]||0):0;                     // 快捷栏选中格
 
   // ---- 物品：1–10 是方块，20+ 是工具/武器，30 是掉落物 ----
@@ -1295,11 +1295,21 @@
     for(const world of worlds){
       const card=document.createElement('div');card.className='saveCard'+(world.id===selectedSave?' selected':'');
       const choose=document.createElement('button');choose.type='button';choose.className='saveChoose';choose.setAttribute('aria-pressed',String(world.id===selectedSave));
-      const icon=document.createElement('span');icon.className='worldIcon';icon.textContent='▧';icon.setAttribute('aria-hidden','true');
+      const icon=document.createElement('span');icon.className='worldIcon';icon.textContent='▧';icon.setAttribute('aria-hidden','true');icon.dataset.save=world.id;if(window.Avatar&&Avatar.icon)Avatar.icon(icon);
       const info=document.createElement('span'),name=document.createElement('strong'),date=document.createElement('small');name.textContent=world.name;
       date.textContent=world.lastPlayed?'Last played · '+new Date(world.lastPlayed).toLocaleString([], {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):world.legacy?'Last played · Unavailable':'Not played yet';
       info.append(name,date);choose.append(icon,info);choose.onclick=()=>{if(world.id!==selectedSave)goToSave(world.id);};
-      const rename=document.createElement('button');rename.type='button';rename.className='saveRename';rename.textContent='Rename';rename.setAttribute('aria-label','Rename '+world.name);rename.onclick=()=>showSaveForm(world.id);
+      const rename=document.createElement('button');rename.type='button';rename.className='saveRename';rename.textContent='Rename';rename.setAttribute('aria-label','Rename '+world.name);rename.onclick=()=>{ // 就在这一行里改名：名字变成输入框，回车、点 Save 或点别处保存，Esc 取消；留空或没改就保持原名
+        const box=document.createElement('input'),row=document.createElement('span');let done=false;
+        box.maxLength=32;box.value=world.name;box.setAttribute('aria-label','World name');box.autocomplete='off';
+        box.style.cssText='flex:1;min-width:0;box-sizing:border-box;font:inherit;font-weight:bold;font-size:16px;padding:8px;border:1px solid #957a50;border-radius:4px;background:#211b16;color:#f6e6c7';
+        row.style.cssText='display:flex;flex:1;min-width:0;align-items:center;gap:12px;padding:10px';row.className='saveChoose';
+        const finish=keep=>{if(done)return;done=true;const v=box.value.trim();if(keep&&v&&v!==world.name){try{saveLibrary.rename(world.id,v);}catch(err){/* 存不下就保持原名 */}}renderSaveCards();};
+        box.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')finish(true);else if(e.key==='Escape')finish(false);};
+        box.onblur=()=>finish(true);
+        row.append(icon,box);choose.replaceWith(row);rename.textContent='Save';rename.onclick=null;$('saveForm').hidden=true;
+        box.focus();box.select();
+      };
       card.append(choose,rename);$('saveCards').appendChild(card);
     }
     if(!worlds.length)showSaveForm();
@@ -1310,7 +1320,7 @@
     e.preventDefault();
     try{
       if(editingSave){saveLibrary.rename(editingSave,$('saveName').value);$('saveForm').hidden=true;renderSaveCards();}
-      else{const id=saveLibrary.create($('saveName').value);goToSave(id);}
+      else{const id=saveLibrary.create($('saveName').value);if(window.Avatar&&Avatar.newWorld)Avatar.newWorld(id);goToSave(id);}
     }catch(err){$('saveError').textContent=err.name==='QuotaExceededError'?'Storage is full. Your existing worlds are safe.':err.message;}
   };
   renderSaveCards();

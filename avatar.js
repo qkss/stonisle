@@ -1,7 +1,8 @@
 // 角色形象：肤色、发型、发色、上衣、裤子。设置 → World → “Your character” 里选，带一个小预览；选择记在本机。
 // 联机时 net.js 用 Avatar.build() 画别的玩家，身上穿的装备也画出来。模型是方块小人，脸朝 -z（和玩家朝向一致）。
 (() => {
-  const KEY = 'stonisle.look';
+  // 形象跟着存档走：每个世界记自己的（第 1 个世界沿用原来的键；别的世界没记过就先用它的）
+  const BASE = 'stonisle.look', keyOf = id => BASE + (id > 1 ? '.' + id : ''), saveId = parseInt(new URLSearchParams(location.search).get('save'), 10) || 1, KEY = keyOf(saveId);
   const SKIN = ['#f6d7bd', '#e8c39e', '#d2a077', '#b07a4f', '#8a5a36', '#5e3c24'];
   const HAIR = ['#2a2018', '#5a3a1e', '#a8743a', '#e0c070', '#c0502a', '#d8d8d8', '#4a78c8', '#c860a8'];
   const SHIRT = ['#c8483c', '#e08a2c', '#e0c040', '#58a84a', '#3c8ac8', '#6a58c0', '#c860a0', '#f0f0f0', '#404048'];
@@ -11,7 +12,7 @@
   const LABEL = { skin: 'Skin', style: 'Hair', hair: 'Hair color', shirt: 'Shirt', pants: 'Pants color', skirt: 'Bottom', size: 'Body' };
   // 六个现成的角色，开局界面上选一个（之后还能在设置里随便改）。名字只是称呼，不绑定性别以外的任何东西
   const HEROES = [
-    { name: 'Milo', look: { skin: 1, style: 0, hair: 1, shirt: 4, pants: 0, skirt: 0 } },
+    { name: 'Niko', look: { skin: 1, style: 0, hair: 1, shirt: 4, pants: 0, skirt: 0 } },
     { name: 'Kai', look: { skin: 3, style: 5, hair: 0, shirt: 3, pants: 1, skirt: 0 } },
     { name: 'Theo', look: { skin: 0, style: 0, hair: 3, shirt: 1, pants: 5, skirt: 0 } },
     { name: 'Luna', look: { skin: 1, style: 1, hair: 0, shirt: 5, pants: 2, skirt: 1 } },
@@ -32,8 +33,8 @@
     46: ['#c9a46a', '#b08a50'], 47: ['#2e2a36', '#46405a'], 48: ['#463a4e', '#2a2230'], 120: ['#c8553a', '#a8402a'], 142: ['#eef2f6', '#c8d4e0'], 146: ['#3a5a4a', '#2a4236'],
     147: ['#3484a8', '#2a6a8a'], 148: ['#6a5038', '#57402c'], 149: ['#a8b8c6', '#6c7c8c'], 150: ['#1c1828', '#463c62'], 151: ['#40506a', '#8ad0ff'] };
   const clean = l => { const o = {}; for (const k in OPTIONS) o[k] = Number.isInteger(l && l[k]) && l[k] >= 0 && l[k] < OPTIONS[k].length ? l[k] : 0; return o; }; // 别人发来的也过这一道
-  let look; try { look = JSON.parse(localStorage.getItem(KEY)); } catch (e) { look = null; }
-  look = look ? clean(look) : { ...HEROES[0].look };
+  const lookOf = id => { let l = null; try { l = JSON.parse(localStorage.getItem(keyOf(id)) || localStorage.getItem(BASE)); } catch (e) { /* 坏数据当没有 */ } return l ? clean(l) : { ...HEROES[0].look }; };
+  let look = lookOf(saveId);
 
   function build(lk, gear = []) { // gear：[头, 身, 脚, 腿] 的物品 id，和 game.equip 同序
     const l = clean(lk), g = new THREE.Group(), [head, body, feet, legsGear] = gear.map(id => GEAR[id] || (id ? ['#8a8a9a', '#6a6a78'] : null));
@@ -163,24 +164,40 @@
     handKey = key; const c = colors(look, gear); FirstPersonHand.paint(c.skin, c.sleeve);
   }
   setInterval(paintHand, 500); paintHand();
-  function changed() { localStorage.setItem(KEY, JSON.stringify(look)); renderRows(); draw(); paintHand(); renderHeroes(); if (window.Net && Net.look) Net.look(); }
-  // —— 开局界面上的六个角色 ——
-  const start = document.getElementById('start'), heroBox = document.createElement('div');
-  if (start) { heroBox.innerHTML = '<p style="margin:16px 0 8px">Choose your character.</p><div id="heroes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px"></div>'; start.before(heroBox); }
-  const portraits = [];
+  function changed() { localStorage.setItem(KEY, JSON.stringify(look)); renderRows(); draw(); paintHand(); renderHeroes(); icons(); if (window.Net && Net.look) Net.look(); }
+  // —— 开局界面：存档那一行左边是这个世界的角色头像；只有新建世界时选一次角色（之后在设置 → Character 里改）——
+  const form = document.getElementById('saveForm'), heroBox = document.createElement('div');
+  heroBox.innerHTML = '<p style="margin:14px 0 8px">Your character</p><button type="button" id="heroNow" aria-expanded="false" style="display:flex;align-items:center;gap:12px;width:100%;padding:6px 12px;background:#ffffff14;border:1px solid #957a50;color:inherit;font:inherit;cursor:pointer;text-align:left"></button><div id="heroes" hidden style="grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px"></div>';
+  if (form) form.querySelector('.saveFormActions').before(heroBox);
+  let heroesOpen = false, ready = false, draft = { ...HEROES[0].look }, direct = false; // draft：正在新建的世界要用的角色；direct：联机访客没有存档，直接改自己的形象
+  const shots = {}; let studio = null;
+  function portrait(lk) { // 一张全身头像；用一个常驻的小画布画，画过的记下来
+    if (!ready) return '';
+    const k = JSON.stringify(clean(lk)); if (shots[k]) return shots[k];
+    if (!studio) {
+      const c = document.createElement('canvas'); c.width = 160; c.height = 200;
+      const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true, preserveDrawingBuffer: true }), sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 0.8, 0.1, 20);
+      cam.position.set(1.3, 1.5, -3.9); cam.lookAt(0, 1.02, 0); sc.add(new THREE.AmbientLight(0xffffff, 0.8)); const sun = new THREE.DirectionalLight(0xfff2d8, 0.6); sun.position.set(1, 2, -2); sc.add(sun);
+      studio = { c, r, sc, cam };
+    }
+    const m = build(lk); studio.sc.add(m); studio.r.render(studio.sc, studio.cam); studio.sc.remove(m);
+    return shots[k] = studio.c.toDataURL();
+  }
+  function icon(el) { // game.js 画存档卡片时调用：把方块图标换成这个世界的角色
+    const src = portrait(+el.dataset.save === saveId ? look : lookOf(+el.dataset.save)); if (!src) return;
+    el.style.cssText = 'width:44px;height:55px;font-size:0'; el.innerHTML = `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:contain">`;
+  }
+  const icons = () => document.querySelectorAll('.worldIcon[data-save]').forEach(icon);
   function renderHeroes() {
     const list = document.getElementById('heroes'); if (!list) return;
-    const now = JSON.stringify(clean(look));
-    list.innerHTML = HEROES.map((h, i) => { const sel = JSON.stringify(clean(h.look)) === now; return `<button type="button" data-i="${i}" aria-pressed="${sel}" style="display:flex;flex-direction:column;align-items:center;padding:4px 2px;background:${sel ? '#ffd36b2e' : '#ffffff14'};border:2px solid ${sel ? '#ffd36b' : '#0000'};color:inherit;font-size:12px;cursor:pointer">${portraits[i] ? `<img src="${portraits[i]}" alt="" style="width:100%;max-width:64px;aspect-ratio:4/5;object-fit:contain">` : ''}${h.name}</button>`; }).join('');
-    for (const b of list.children) b.onclick = () => { look = { ...HEROES[b.dataset.i].look }; changed(); };
+    const shown = direct ? look : draft, now = JSON.stringify(clean(shown)), cur = HEROES.findIndex(h => JSON.stringify(clean(h.look)) === now), btn = document.getElementById('heroNow'), pic = portrait(shown);
+    btn.innerHTML = (pic ? `<img src="${pic}" alt="" style="height:64px;aspect-ratio:4/5;object-fit:contain">` : '') + `<b style="flex:1">${cur < 0 ? 'Custom' : HEROES[cur].name}</b><small>${heroesOpen ? 'Close ▴' : 'Change ▾'}</small>`; // 在设置里自己搭的形象不在名单里，叫 Custom
+    btn.setAttribute('aria-expanded', heroesOpen); btn.onclick = () => { heroesOpen = !heroesOpen; renderHeroes(); };
+    list.hidden = !heroesOpen; list.style.display = heroesOpen ? 'grid' : 'none';
+    list.innerHTML = HEROES.map((h, i) => { const sel = JSON.stringify(clean(h.look)) === now, p = portrait(h.look); return `<button type="button" data-i="${i}" aria-pressed="${sel}" style="display:flex;flex-direction:column;align-items:center;padding:4px 2px;background:${sel ? '#ffd36b2e' : '#ffffff14'};border:2px solid ${sel ? '#ffd36b' : '#0000'};color:inherit;font-size:12px;cursor:pointer">${p ? `<img src="${p}" alt="" style="width:100%;max-width:64px;aspect-ratio:4/5;object-fit:contain">` : ''}${h.name}</button>`; }).join('');
+    for (const b of list.children) b.onclick = () => { heroesOpen = false; if (direct) { look = { ...HEROES[b.dataset.i].look }; changed(); } else { draft = { ...HEROES[b.dataset.i].look }; renderHeroes(); } }; /* 选好就收起 */
   }
-  addEventListener('load', () => { // 用一个临时的小画布把六个角色各画一张头像，画完就释放
-    const c = document.createElement('canvas'); c.width = 160; c.height = 200;
-    const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true, preserveDrawingBuffer: true }), s = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 0.8, 0.1, 20);
-    cam.position.set(1.3, 1.5, -3.9); cam.lookAt(0, 1.02, 0); s.add(new THREE.AmbientLight(0xffffff, 0.8)); const sun = new THREE.DirectionalLight(0xfff2d8, 0.6); sun.position.set(1, 2, -2); s.add(sun);
-    HEROES.forEach((h, i) => { const m = build(h.look); s.add(m); r.render(s, cam); portraits[i] = c.toDataURL(); s.remove(m); });
-    r.dispose(); r.forceContextLoss(); renderHeroes();
-  });
+  addEventListener('load', () => { ready = true; renderHeroes(); icons(); });
   renderHeroes();
   renderRows();
   let spin = 0; // 拖动预览可以转着看
@@ -189,7 +206,9 @@
   view.onpointerup = () => { view.onpointermove = null; };
   document.getElementById('tab-character').addEventListener('click', () => setTimeout(draw, 0)); // 切到这一页时画出来（也带上刚换的装备）
   addEventListener('load', draw);
-  window.Avatar = { build, walk, pose, hold, colors, inWater, clean, get look() { return look; } };
+  window.Avatar = { build, walk, pose, hold, colors, inWater, clean, icon, get look() { return look; },
+    newWorld(id) { localStorage.setItem(keyOf(id), JSON.stringify(draft)); },                                   // game.js 新建世界时调用：把刚选的角色记给它
+    direct(before) { direct = true; before.before(heroBox); renderHeroes(); } };                                // net.js：访客的加入界面上直接选自己的形象
 })();
 
 // —— 第三人称视角 ——按 V 或在设置 → Controls 里切换。镜头退到身后约 4 格，被方块挡住就往前收；
