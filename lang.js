@@ -10,15 +10,16 @@ window.Lang = (() => {
   ['obsidian', 'calcite', 'amethyst', 'diamond', 'ruby', 'emerald', 'sapphire'].forEach((n, i) => { BLOCK[80 + i] = n; });                     // 矿物与宝石
   ['cement', 'yellow brick', 'dark brick', 'light plank', 'dark plank', 'red plank'].forEach((n, i) => { BLOCK[90 + i] = n; });                  // 不同颜色的建材
   ['door', 'door', 'door', 'door', 'window', 'window', 'bed', 'bed', 'red flower', 'yellow flower', 'blue flower', 'berry bush', 'berry bush', 'sapling'].forEach((n, i) => { BLOCK[60 + i] = n; }); // 家居与植物
+  Object.assign(BLOCK, { 159: 'banana leaves', 176: 'grape vine', 199: 'lychee leaves', 183: 'slime block', 116: 'red mushroom', 117: 'brown mushroom', 118: 'white mushroom', 179: 'campfire', 119: 'pumpkin', 143: 'watermelon', 144: 'cherry blossom', 145: 'apple leaves', 152: 'mango leaves', 154: 'granite', 155: 'marble', 156: 'quartz', 157: 'slate', 158: 'cobblestone', 77: 'rose', 78: 'sunflower', 79: 'lily', 87: 'daffodil', 88: 'rapeseed flower', 89: 'bamboo', 98: 'farmland', 99: 'little plant' }); // 新植物和耕地（farm.js）
   BLOCK[74] = BLOCK[75] = 'sign'; BLOCK[76] = 'chest'; BLOCK[96] = 'glow glass'; BLOCK[97] = 'ice lamp';
-  Core.WOODS.forEach(w=>{for(let k=0;k<4;k++)BLOCK[w.ladder+k]=w.name+' ladder';BLOCK[w.log]=w.name+' log';BLOCK[w.plank]=w.name+' plank';BLOCK[w.chest]=w.name+' chest';for(let k=0;k<4;k++){BLOCK[w.door+k]=w.name+' door';BLOCK[w.stairs+k]=w.name+' stairs';}BLOCK[w.slab]=w.name+' slab';BLOCK[w.fence]=w.name+' fence';for(let k=0;k<4;k++)BLOCK[w.inverted+k]=w.name+' stairs';BLOCK[w.upperSlab]=w.name+' slab';BLOCK[w.doubleSlab]=w.name+' double slab';});
-  const ITEM = { 16: 'wooden pickaxe', 17: 'wooden axe', 18: 'wooden shovel', 153: 'wooden sword', 20: 'stone pickaxe', 21: 'stone axe', 22: 'stone shovel', 23: 'stone sword', 24: 'torch', 25: 'iron pickaxe', 26: 'iron sword',
+  Core.WOODS.forEach(w=>{for(let k=0;k<4;k++)BLOCK[w.ladder+k]=w.name+' ladder';BLOCK[w.log]=w.name+' log';BLOCK[w.plank]=w.name+' plank';BLOCK[w.chest]=w.name+' chest';BLOCK[w.doorR]=BLOCK[w.doorR+1]=w.name+' door';for(let k=0;k<4;k++){BLOCK[w.door+k]=w.name+' door';BLOCK[w.stairs+k]=w.name+' stairs';}BLOCK[w.slab]=w.name+' slab';BLOCK[w.fence]=w.name+' fence';for(let k=0;k<4;k++)BLOCK[w.inverted+k]=w.name+' stairs';BLOCK[w.upperSlab]=w.name+' slab';BLOCK[w.doubleSlab]=w.name+' double slab';});
+  const ITEM = { 273: 'cooked meat', 274: 'cooked rabbit', 275: 'cooked venison', 276: 'cooked antelope', 277: 'cooked fox', 278: 'cooked pork', 279: 'cooked fish', 268: 'rabbit meat', 269: 'venison', 270: 'antelope meat', 271: 'fox meat', 272: 'pork', 261: 'bow', 262: 'crossbow', 263: 'hunting shotgun', 264: 'arrow', 265: 'pellet', 266: 'bowstring', 267: 'gunpowder', 256: 'banana', 257: 'grapes', 258: 'lychee', 259: 'pumpkin seeds', 260: 'watermelon seeds', 177: 'apple', 178: 'mango', 100: 'rose seeds', 101: 'sunflower seeds', 102: 'lily seeds', 103: 'daffodil seeds', 104: 'rapeseed seeds', 105: 'fertilizer', 106: 'wooden bucket', 107: 'wooden bucket of water', 108: 'iron bucket', 109: 'iron bucket of water', 16: 'wooden pickaxe', 17: 'wooden axe', 18: 'wooden shovel', 153: 'wooden sword', 20: 'stone pickaxe', 21: 'stone axe', 22: 'stone shovel', 23: 'stone sword', 24: 'torch', 25: 'iron pickaxe', 26: 'iron sword',
     27: 'spear', 30: 'raw meat', 31: 'hide', 32: 'berry', 33: 'clay', 34: 'scorpion shell', 35: 'vine', 36: 'tusk', 37: 'shade fur', 46: 'shell boots', 47: 'night cloak',
     38: 'bat wing', 39: 'black feather', 48: 'glide cape', 49: 'quill', 110: 'glow dust', 111: 'frost shard', 112: 'raw fish', 113: 'jelly', 114: 'crab shell', 115: 'crab meat', 120: 'crab helmet', 121: 'straw hat', 122: 'straw shirt', 123: 'straw pants', 124: 'straw sandals', 125: 'leather pants', 126: 'iron pants',
     127: 'alloy helmet', 128: 'alloy armor', 129: 'alloy pants', 131: 'alloy boots', 130: 'alloy ingot',
     132: 'white fur', 133: 'worm tooth', 134: 'stone heart', 135: 'obsidian core', 136: 'eel skin', 137: 'tide scale', 138: 'vulture feather', 139: 'gale feather', 140: 'shade membrane', 141: 'storm plume',
     142: 'snow boots', 19: 'drill pickaxe', 28: 'heart pickaxe', 29: 'obsidian sword', 146: 'dive suit', 147: 'tide armor', 148: 'longwing cape', 149: 'gale boots', 150: 'shade cloak', 151: 'storm crown', 40: 'leather cap', 41: 'leather coat', 42: 'leather boots', 43: 'iron helmet', 44: 'iron armor', 45: 'iron boots' };
-  const MOB = { '野兔': 'rabbit', '鹿': 'deer', '雪兔': 'snow hare', '驯鹿': 'reindeer', '沙狐': 'sand fox', '羚羊': 'antelope', '影狼': 'shade wolf',
+  const MOB = { '熊猫': 'panda', '史莱姆': 'slime', '野兔': 'rabbit', '鹿': 'deer', '雪兔': 'snow hare', '驯鹿': 'reindeer', '沙狐': 'sand fox', '羚羊': 'antelope', '影狼': 'shade wolf',
     '洞蝠': 'cave bat', '啄鸦': 'peck crow', '灯蛾': 'lamp moth', '霜灵': 'frost wisp', '咬咬鱼': 'nipper fish', '刺水母': 'sting jelly', '钳蟹': 'pincer crab',
     '雪爪': 'frost prowler', '沙虫': 'dune worm', '岩偶': 'stone golem', '黑曜卫士': 'obsidian sentinel', '潜鳗': 'lurker eel', '潮蛇': 'tide serpent', '沙鹫': 'dune vulture', '风隼': 'gale hawk', '影翼': 'shade wing', '风暴鹏': 'storm roc',
     '泥团': 'mud blob', '沙蝎': 'sand scorpion', '缠藤': 'snare vine', '鬃猪': 'bristle boar' };
@@ -33,6 +34,16 @@ window.Lang = (() => {
     'snow brick': 'Snow bricks make a snow house.', 'roof tile': 'Roof tiles keep the rain out.', 'iron block': 'An iron block is very heavy.',
     'gold block': 'A gold block shines.', 'crystal block': 'A crystal block glows blue.', lamp: 'A lamp lights up the dark.',
     door: 'Open the door and come in.', window: 'Look out of the window.', bed: 'Sleep in the bed at night.',
+    'banana leaves': 'Bananas grow on this tree.', 'grape vine': 'Grapes grow on this vine.', 'lychee leaves': 'Lychees grow on this tree.', 'banana': 'A banana is long and yellow.', 'grapes': 'Grapes are small and purple.', 'lychee': 'A lychee is red outside and white inside.',
+    'red mushroom': 'This mushroom is red with white dots.', 'brown mushroom': 'This mushroom is brown.', 'white mushroom': 'This mushroom is white.', 'campfire': 'A campfire cooks meat. It needs wood.', 'pumpkin': 'A pumpkin is big and orange.', 'watermelon': 'A watermelon is green outside and red inside.',
+    'cherry blossom': 'Cherry blossoms are pink.', 'apple leaves': 'Apples grow on this tree.', 'mango leaves': 'Mangoes grow on this tree.', 'apple': 'An apple is red and sweet.', 'mango': 'A mango is yellow and sweet.', 'pumpkin seeds': 'Plant pumpkin seeds in dirt.', 'watermelon seeds': 'Plant watermelon seeds in dirt.',
+    'cooked meat': 'Cooked meat is hot and good.', 'cooked rabbit': 'Cooked rabbit is hot and good.', 'cooked venison': 'Cooked venison is hot and good.', 'cooked antelope': 'Cooked antelope is hot and good.', 'cooked fox': 'Cooked fox is hot and good.', 'cooked pork': 'Cooked pork is hot and good.', 'cooked fish': 'Cooked fish is hot and good.',
+    'rabbit meat': 'Rabbit meat comes from a rabbit.', 'venison': 'Venison is deer meat.', 'antelope meat': 'Antelope meat comes from an antelope.', 'fox meat': 'Fox meat comes from a fox.', 'pork': 'Pork comes from a boar.',
+    'bow': 'A bow shoots arrows far.', 'crossbow': 'A crossbow is strong and slow.', 'hunting shotgun': 'A hunting shotgun has a wooden stock and two long barrels.', 'arrow': 'An arrow is long and thin.', 'pellet': 'A pellet is a small iron ball.', 'bowstring': 'A bowstring is made from a vine.', 'gunpowder': 'Gunpowder is black dust.',
+    'granite': 'Granite is hard and pink.', 'marble': 'Marble is white and smooth.', 'quartz': 'Quartz is white and shiny.', 'slate': 'Slate is dark and flat.', 'cobblestone': 'Cobblestones are small round stones.',
+    'rose': 'A rose is red and smells sweet.', 'sunflower': 'A sunflower is tall and yellow.', 'lily': 'A lily is white and pink.', 'daffodil': 'A daffodil is yellow.', 'rapeseed flower': 'Rapeseed flowers are small and yellow.', 'bamboo': 'Bamboo grows tall and fast.', 'farmland': 'Plants grow in farmland.', 'little plant': 'This little plant will grow.',
+    'rose seeds': 'Plant rose seeds in dirt.', 'sunflower seeds': 'Plant sunflower seeds in dirt.', 'lily seeds': 'Plant lily seeds in dirt.', 'daffodil seeds': 'Plant daffodil seeds in dirt.', 'rapeseed seeds': 'Plant rapeseed seeds in dirt.', 'fertilizer': 'Fertilizer helps plants grow fast.',
+    'wooden bucket': 'A wooden bucket can carry water.', 'wooden bucket of water': 'This bucket is full of water.', 'iron bucket': 'An iron bucket can carry water.', 'iron bucket of water': 'This bucket is full of water.',
     'red flower': 'This flower is red.', 'yellow flower': 'This flower is yellow.', 'blue flower': 'This flower is blue.',
     'cave bat': 'Cave bats fear the light.', 'peck crow': 'The peck crow wants your food.', 'lamp moth': 'The lamp moth likes the light.', 'frost wisp': 'The frost wisp is cold.',
     'nipper fish': 'Nipper fish bite in the water.', 'sting jelly': 'Do not touch the sting jelly.', 'pincer crab': 'The pincer crab walks to the side.',
@@ -64,6 +75,7 @@ window.Lang = (() => {
     torch: 'A torch gives light at night.', 'iron pickaxe': 'An iron pickaxe is fast.', 'iron sword': 'An iron sword is strong.',
     'raw meat': 'Eat meat to get well.', hide: 'Hide comes from animals.', 'leather cap': 'Wear the cap on your head.', 'leather coat': 'The coat keeps you safe.',
     'leather boots': 'Boots go on your feet.', 'iron helmet': 'The helmet is very hard.', 'iron armor': 'Iron armor is heavy.', 'iron boots': 'Iron boots are strong.',
+    panda: 'The panda is black and white. It loves bamboo.', slime: 'The slime is green and bouncy.', 'slime block': 'You can bounce on a slime block.',
     rabbit: 'The rabbit hops.', deer: 'The deer has four legs.', 'snow hare': 'The snow hare is white.', reindeer: 'The reindeer lives in the snow.',
     'sand fox': 'The sand fox has big ears.', antelope: 'The antelope runs fast.', 'shade wolf': 'The shade wolf comes at night.',
   };
@@ -198,6 +210,7 @@ window.Lang = (() => {
   const held = () => (($('bar') && $('bar').querySelector('.on')) || {}).title || '';
   const placed = (g, id) => { let n = 0; for (const k in g.world.edits) for (const i in g.world.edits[k]) if (g.world.edits[k][i] === id) n++; return n; };
   const inv = (g, id) => g.inv[id] || 0;
+  const PLANKS = Core.WOODS.map(w => w.plank), placedIf = (g, ok) => { let n = 0; for (const k in g.world.edits) for (const i in g.world.edits[k]) if (i !== 'g' && ok(g.world.edits[k][i])) n++; return n; }; // 世界里放着的、符合条件的方块数
   const LEVELS = [
     { name: 'First words', quests: [
       { say: 'Look. A tree.', target: [6], done: () => /^(log|leaves)$/.test($('label').textContent) },
@@ -220,13 +233,21 @@ window.Lang = (() => {
       { say: 'Look at two new things.', count: () => seen.size, n: 2 },
       { say: 'Open your journal and hear a word.', key: 'J', done: () => heard },
     ] },
+    { name: 'My home', quests: [ // 盖一个能过夜的小屋：砌墙 → 做门 → 装门 → 放床 → 睡到天亮。床要兽皮才能做，这里装好门就送一张，不用为了任务去打动物
+      { say: 'Build a wall. Put twelve planks.', count: g => placedIf(g, id => PLANKS.includes(id)), n: 12 },
+      { say: 'Make a door.', done: g => Core.WOODS.some(w => inv(g, w.door) > 0) },
+      { say: 'Put the door in your wall.', done: g => placedIf(g, id => !!Core.doorBase(id)) > 0, gift: 66, cheer: 'Good job! Here is a bed for you.' },
+      { say: 'Put your bed in your home.', done: g => placedIf(g, id => id === 66 || id === 67) > 0 },
+      { say: 'Sleep in your bed at night.', count: () => (window.Home && Home.sleeps) || 0, n: 1 },
+    ] },
   ];
   const QUESTS = LEVELS.flatMap((l, li) => l.quests.map((q, qi) => ({ ...q, level: li, idx: qi, of: l.quests.length })));
   // 中文小字提示：只给“这一句里第一次出现的新词”，标在该词正下方；F1 或点任务卡片显示 5 秒
   const ZH = { look: '看', tree: '树', dig: '挖', log: '原木', logs: '原木', open: '打开', bag: '背包', make: '制作', plank: '木板', planks: '木板', put: '放',
     three: '三', eight: '八', five: '五', stone: '石头', stones: '石头', one: '一', pickaxe: '镐', six: '六', ground: '地面', hold: '拿着', hand: '手',
     with: '用', go: '走', ten: '十', blocks: '格', away: '离开', here: '这里', two: '二', new: '新的', things: '东西', journal: '手记', hear: '听', word: '单词',
-    your: '你的', on: '在…上', in: '在…里', from: '从', at: '朝', and: '和' }; // a、the 不标
+    your: '你的', on: '在…上', in: '在…里', from: '从', at: '朝', and: '和',
+    build: '建造', wall: '墙', twelve: '十二', door: '门', bed: '床', home: '家', sleep: '睡觉', night: '夜晚' }; // a、the 不标
   const keyOf = w => w.toLowerCase().replace(/[^a-z]/g, '');
   const known = new Set();
   const NEWW = QUESTS.map(q => { // 每条任务里的新词（按任务顺序第一次出现）
@@ -296,7 +317,8 @@ window.Lang = (() => {
     busy = true;
     const q = QUESTS[step], next = QUESTS[step + 1];
     step++; localStorage.setItem('stonisle.quest', step);
-    const cheer = !next ? 'You did it! Have fun.' : next.level !== q.level ? `Good job! Level ${NUM[next.level + 1]}.` : 'Good job!';
+    if (q.gift && window.game) { game.give(q.gift, 1); game.renderBar(); }                          // 这一步的奖励（装好门送一张床）
+    const cheer = !next ? 'You did it! Have fun.' : q.cheer || (next.level !== q.level ? `Good job! Level ${NUM[next.level + 1]}.` : 'Good job!');
     guideEl.innerHTML = `<b>${cheer}</b>`; wsay(cheer); target = null;
     setTimeout(startQuest, next ? 2200 : 3500);
   }
@@ -523,6 +545,7 @@ window.Lang = (() => {
     86: ['Blue! Wow!', 'A sapphire! It is blue!', 'You found a sapphire! It is blue like the sky.'],
   };
   const MEET = { // 第一次遇到每种怪物：名字加一句怎么对付它
+    'slime': ['A slime!', 'A slime! Hit it!', 'A slime! It drops a bouncy block.'],
     'mud blob': ['A mud blob!', 'A mud blob! Hit it!', 'A mud blob! Hit it and it flies away.'],
     'sand scorpion': ['A scorpion! Run!', 'A scorpion! It is fast!', 'A sand scorpion! It can not swim.'],
     'snare vine': ['Bad plant! Back!', 'A snare vine! Stay back!', 'A snare vine! Cut it with your axe.'],

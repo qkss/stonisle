@@ -103,7 +103,7 @@
     $('saveIntro').insertAdjacentHTML('afterend', '<label for="joinName" style="display:block;margin:14px 0 6px">Your name</label><input id="joinName" maxlength="12" autocomplete="off" placeholder="Type your name" style="width:100%;box-sizing:border-box;font:inherit;padding:11px;border:1px solid #957a50;border-radius:4px;background:#211b16;color:#f6e6c7">');
     if (Avatar.direct) Avatar.direct($('start')); // 访客没有存档：在这里直接选形象
     const box = $('joinName'), start = $('start'), ok = () => { start.disabled = !box.value.trim(); };
-    box.value = localStorage.getItem(NAME) || ''; start.textContent = 'Join'; box.oninput = ok; ok();
+    box.value = localStorage.getItem(NAME) || ''; start.textContent = 'Join'; start.hidden = false; box.oninput = ok; ok();
     start.addEventListener('click', () => {
       if (es) return;
       name = cleanName(box.value); localStorage.setItem(NAME, name); $('lanName').value = name; box.disabled = true; start.textContent = 'Play';

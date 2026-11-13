@@ -61,6 +61,23 @@
     save.pos=[10.5,32.45,8.32,0,-.12];
     for(let x=4;x<=17;x++)for(let z=2;z<=16;z++)for(let y=30;y<=40;y++)world.set(x,y,z,y===30?3:y<34&&z<8?4:y<33?WATER:AIR);
   }
+  const artReview=materialPreview&&new URLSearchParams(location.search).get('artreview')==='1';
+  if(artReview){
+    save.pos=[10,31,14,0,-.30];
+    for(let x=2;x<=20;x++)for(let z=2;z<=18;z++)for(let y=30;y<45;y++)world.set(x,y,z,y===30?1:AIR);
+    [77,78,79,87,88,89,99].forEach((id,i)=>{world.set(5+i*1.6|0,31,10,id);if(id===89){world.set(13,32,10,89);world.set(13,33,10,89);}});
+  }
+  const rockReview=materialPreview&&new URLSearchParams(location.search).get('rockreview')==='1';
+  if(rockReview){
+    save.hq=true;
+    save.pos=[10,31,16,0,-.40];
+    for(let x=2;x<=20;x++)for(let z=2;z<=20;z++)for(let y=30;y<45;y++)world.set(x,y,z,y===30?4:AIR);
+    for(let x=6;x<=14;x++)for(let z=8;z<=14;z++)world.set(x,30,z,158);
+    [154,155,156,157,158,119,143].forEach((id,i)=>world.set(4+i*2,31,8,id));
+    save.slots=[158,154,155,156,157,119,143,8,3];save.inv={158:64,154:64,155:64,156:64,157:64,119:64,143:64,8:64,3:64};
+  }
+  const rangedReview=materialPreview&&new URLSearchParams(location.search).get('rangedreview')==='1';
+  if(rangedReview){save.slots=[261,262,263,264,265,266,267,158,3];save.inv=Object.fromEntries(save.slots.map(id=>[id,64]));}
   const blockDamage = new MiningRules.DamageStore(save.mining);
   if(waterPreview){
     save.pos=[12.5,35,16.5,.46,-.30];
@@ -128,7 +145,10 @@
     [142, 1, { 132: 4 }], [19, 1, { 133: 4, 12: 2 }], [28, 1, { 134: 1, 12: 3, 8: 2 }], [29, 1, { 135: 1, 80: 4 }], [146, 1, { 136: 4 }], [147, 1, { 137: 6 }],
     [148, 1, { 138: 4, 48: 1 }], [149, 1, { 139: 3 }], [150, 1, { 140: 2, 47: 1 }], [151, 1, { 141: 1 }], // 第三步怪物的掉落：白绒 虫牙 岩心 黑曜核 鳗皮 潮鳞 鹫羽 风羽 影膜 风暴羽
     [9, 4, { 33: 2 }], [46, 1, { 34: 3 }], [27, 1, { 36: 2, 8: 2 }], [47, 1, { 37: 4 }], // 怪物掉落：黏土 → 红砖；蝎壳 → 蝎壳靴；獠牙 → 长矛；影毛 → 夜行斗篷
-    [90, 4, { 4: 2, 3: 2 }], [91, 4, { 4: 3, 2: 1 }], [92, 4, { 9: 4, 11: 1 }], 
+    [90, 4, { 4: 2, 3: 2 }], [91, 4, { 4: 3, 2: 1 }], [92, 4, { 9: 4, 11: 1 }], [106, 1, { 8: 3 }], [108, 1, { 12: 3 }], [179, 1, { 6: 3, 3: 2 }], // 木桶：3 块木板；铁桶：3 块铁矿；篝火：3 根原木 + 2 块石头
+    [266, 1, { 35: 1 }], [267, 2, { 11: 1, 4: 1 }], [264, 4, { 8: 1, 3: 1, 39: 1 }], [265, 8, { 12: 1, 267: 1 }], // 弓弦：1 根藤；火药 ×2：1 煤 + 1 沙；箭 ×4：木板 + 石头 + 黑羽；弹丸 ×8：铁矿 + 火药
+    [261, 1, { 8: 3, 266: 2 }], [262, 1, { 8: 3, 12: 2, 266: 2 }], [263, 1, { 12: 4, 8: 2, 267: 2 }],             // 弓：3 木板 + 2 弓弦；弩：再加 2 铁矿；猎枪：4 铁矿 + 2 木板 + 2 火药
+    
   ];
   for(const w of Core.WOODS){
     if(w.log!==6)RECIPES.push([w.plank,4,{[w.log]:1}],[w.door,1,{[w.plank]:6}],[w.chest,1,{[w.plank]:8}]);
@@ -138,6 +158,7 @@
   let time = save.time == null ? 60 : save.time;
   if(materialPreview&&new URLSearchParams(location.search).get('night')==='1')time=DAY*.82;
   // 挖掘耗时由 mining-rules.js 按工具与方块材质统一计算。
+  const FLESH = { '野兔': 268, '雪兔': 268, '鹿': 269, '驯鹿': 269, '羚羊': 270, '沙狐': 271, '鬃猪': 272 }, MEATS = { 30: 4, 268: 3, 269: 5, 270: 5, 271: 3, 272: 5, 273: 8, 274: 6, 275: 10, 276: 10, 277: 6, 278: 10, 279: 5 }; // 兔肉 鹿肉 羚羊肉 狐肉 猪肉，273–279 是烤熟的（回血翻倍；生鱼回 2、烤鱼回 5）；MEATS：右键吃回多少点
   const DMG = { [PICK]: 2, [AXE]: 4, [SHOVEL]: 2, [SWORD]: 5, [PICK2]: 3, [SWORD2]: 10, 27: 6, 19: 2, 28: 4, 29: 12, 17: 2, 153: 3 }; // 17 木斧 153 木剑（木镐、木铲和空手一样是 1） // 19 钻镐 28 岩心镐 29 黑曜剑 // 27 长矛 // 空手及其他物品 1 点
 
   // ---- 玩家 ----
@@ -292,6 +313,72 @@
       (x, y) => { const d = Math.max(Math.abs(x - 31.5), Math.abs(y - 31.5)); return d > 26 ? [40, 52, 70] : d > 23 ? [70, 96, 130] : mix([232, 250, 255], [110, 190, 255], Math.hypot(x - 31.5, y - 31.5) / 34); },
     ];
     for(let i=0;i<3;i++){const tint=[[1.5,1.5,1.4],[.65,.65,.65],[1.1,.72,.6]][i];for(const source of [6,7,27,45])tiles.push((x,y)=>{const c=tiles[source](x,y);return c.map((v,k)=>k<3?Math.min(255,v*tint[k]):v);});}
+    // —— 61–63：新植物和耕地。61、62 各切成四小块（每块 32×32），core.js 的 PLANTS 说明哪一块是什么 ——
+    const NONE = [0, 0, 0, 0], quad = draw => (x, y) => draw(x < 32 ? 0 : 1, y < 32 ? 0 : 1, x % 32, y % 32);
+    tiles.push(quad((qx, qy, u, v) => { // 61：玫瑰 | 向日葵 / 百合 | 水仙（都只画花头，茎用花那一格的下半截）
+      const d = Math.hypot(u - 16, v - 15), a = Math.atan2(v - 15, u - 16);
+      if (!qx && !qy) { // 玫瑰：一圈圈卷起来的深浅红花瓣，底下两片萼
+        if (d < 11) return mul([214, 36, 60], 0.72 + 0.28 * Math.cos(a * 3 + d * 0.9) * (d > 2.5 ? 1 : 0) + (d < 2.5 ? -0.2 : 0));
+        return v > 23 && v < 30 && Math.abs(u - 16) < (v - 21) * 0.9 ? [62, 128, 50] : NONE;
+      }
+      if (qx && !qy) return d < 5.5 ? mul([112, 72, 30], 0.85 + 0.3 * hash(u >> 1, v >> 1, 610)) : d < 9 || (d < 15 && Math.cos(a * 12) > -0.25) ? mul([250, 198, 36], d < 9 ? 0.9 : 1) : NONE; // 向日葵：棕色花盘，一圈黄花瓣
+      if (!qx && qy) return d < 2.6 ? [244, 190, 60] : d < 14.5 && Math.cos(a * 3 + 0.5) > d / 11 - 0.75 ? mix([255, 255, 255], [246, 150, 190], Math.min(1, d / 15)) : NONE; // 百合：六片尖花瓣，白里透粉，黄花蕊
+      return d < 3.2 ? [226, 110, 20] : d < 6.2 ? [250, 152, 40] : d < 13.5 && Math.cos(a * 3) > -0.3 - (13.5 - d) / 12 ? [255, 238, 150] : NONE; // 水仙：浅黄花瓣，中间一只橙色的小喇叭
+    }));
+    tiles.push(quad((qx, qy, u, v) => { // 62：油菜花 | 竹子 / 幼苗 | （空）
+      if (!qx && !qy) { // 油菜花：几根细茎，上面一簇簇小黄花，下面几片叶子
+        const cu = (u % 8) - 4, cv = (v % 7) - 3.5, on = hash(u >> 3, Math.floor(v / 7), 620) < 0.78;
+        if (v < 21 && on && Math.hypot(cu, cv) < 2.7) return Math.hypot(cu, cv) < 0.9 ? [214, 150, 20] : [250, 216, 40];
+        if (Math.abs(u - 16) < 1.2 || (v > 8 && (Math.abs(u - 8 - (v - 8) * 0.33) < 1 || Math.abs(u - 24 + (v - 8) * 0.33) < 1))) return [74, 136, 50];
+        return v > 22 && Math.abs(Math.abs(u - 16) - (v - 20)) < 2.2 && Math.abs(u - 16) < 11 ? [86, 150, 58] : NONE;
+      }
+      if (qx && !qy) { // 竹子：一截青绿的竹竿，每 16 像素一个竹节，节上斜出两片细叶；上下能接起来
+        const n = v % 16, side = Math.abs(u - 16);
+        if (side < 3.6) return mul([104, 160, 66], (n < 1.6 ? 0.62 : 1) * (0.8 + 0.25 * (1 - side / 3.6)));
+        return n > 1 && n < 9 && side < 13 && Math.abs((side - 3.6) - (n - 1) * 1.15) < 1.5 ? [70, 138, 52] : NONE;
+      }
+      if (!qx && qy) { // 幼苗：一小截茎，顶着两片嫩叶
+        if (Math.abs(u - 16) < 1.3 && v > 14) return [92, 150, 60];
+        return (((u - 9.5) / 6.5) ** 2 + ((v - 13) / 3.6) ** 2 < 1) || (((u - 22.5) / 6.5) ** 2 + ((v - 10) / 3.6) ** 2 < 1) ? [120, 190, 76] : NONE;
+      }
+      return NONE;
+    }));
+    tiles.push((x, y) => mul(mix([86, 58, 38], [116, 82, 54], pn(x, y, 16, 16, 630)), (Math.sin(y * Math.PI / 8) < -0.35 ? 0.66 : 1) * (0.85 + 0.25 * pn(x, y, 32, 32, 631)))); // 63：耕地的顶面，一垄一垄翻过的土
+    // —— 64–68：花岗岩、大理石、石英石、石板岩、鹅卵石 ——
+    tiles.push((x, y) => { const s = hash(x >> 1, y >> 1, 640); return s < 0.13 ? mul([78, 66, 66], 0.8 + 0.4 * hash(x, y, 641)) : s > 0.9 ? [232, 216, 208] : mul(mix([166, 118, 108], [198, 152, 138], fbm(x, y, 642)), 0.9 + 0.2 * pn(x, y, 32, 32, 643)); }); // 花岗岩：粉灰色，黑白斑点
+    tiles.push((x, y) => { const v = Math.abs(pn(x + 9 * pn(x, y, 6, 6, 651), y, 4, 5, 650) - 0.5), w = Math.abs(pn(x, y + 7 * pn(x, y, 5, 5, 653), 7, 6, 652) - 0.5); return v < 0.028 ? [150, 152, 162] : w < 0.02 ? [186, 186, 194] : mul([238, 236, 232], 0.94 + 0.08 * pn(x, y, 16, 16, 654)); }); // 大理石：白底，几条弯弯的灰纹
+    tiles.push((x, y) => mul(mix([226, 220, 228], [255, 252, 255], Math.abs(pn(x, y, 6, 6, 660) - 0.5) * 2), ((x + y * 0.6) % 16 < 1.2 || (x * 0.6 - y + 64) % 20 < 1.2) ? 0.86 : 1)); // 石英石：乳白带一点粉，斜向的晶面纹
+    tiles.push((x, y) => mul(mix([62, 70, 84], [92, 102, 118], pn(x, y, 3, 20, 670)), (y % 8 < 1 ? 0.68 : 1) * (0.9 + 0.2 * pn(x, y, 32, 8, 671)))); // 石板岩：深蓝灰，一层一层的
+    tiles.push((x, y) => { // 鹅卵石：一颗颗圆石头，中间是深色的缝
+      let best = 99, tone = 0;
+      for (let cy = -1; cy <= 1; cy++) for (let cx = -1; cx <= 1; cx++) {
+        const gx = Math.floor(x / 16) + cx, gy = Math.floor(y / 16) + cy, wx = (gx + 4) % 4, wy = (gy + 4) % 4; // 取模：贴图四边能接上
+        const d = Math.hypot(x - (gx * 16 + 5 + hash(wx, wy, 680) * 6), y - (gy * 16 + 5 + hash(wx, wy, 681) * 6));
+        if (d < best) { best = d; tone = hash(wx, wy, 682); }
+      }
+      return best > 7.2 ? [62, 60, 58] : mul(mix([118, 116, 112], [176, 172, 164], tone), 1.05 - best / 26 + 0.1 * pn(x, y, 32, 32, 683));
+    });
+    // —— 69–76：蘑菇（四小块）、南瓜侧/顶、西瓜侧/顶、樱花、苹果树叶、芒果树叶 ——
+    tiles.push(quad((qx, qy, u, v) => { // 69：红蘑菇 | 棕蘑菇 / 白蘑菇 | 黄蘑菇。伞盖加一截白柄
+      const cap = [[214, 48, 44], [150, 100, 60], [226, 238, 255], [240, 196, 60]][qx + qy * 2], on = ((u - 16) / 12) ** 2 + ((v - 15) / 9) ** 2 < 1 && v < 16;
+      if (on) return !(qx + qy) && Math.hypot((u % 8) - 4, (v % 7) - 3.5) < 1.6 && hash(u >> 3, Math.floor(v / 7), 690) < 0.7 ? [255, 250, 240] : mul(cap, 0.82 + 0.3 * (1 - (v - 6) / 10));
+      return Math.abs(u - 16) < 3.4 && v >= 16 && v < 30 ? mul([238, 228, 208], 0.85 + 0.15 * (1 - Math.abs(u - 16) / 3.4)) : NONE;
+    }));
+    tiles.push((x, y) => mul([228, 130, 32], 0.72 + 0.3 * Math.abs(Math.sin(x * Math.PI / 10.67)) + 0.08 * pn(x, y, 16, 16, 700)));                                   // 南瓜侧面：橙色，一道道竖棱
+    tiles.push((x, y) => { const d = Math.hypot(x - 32, y - 32); return d < 5 ? [96, 124, 52] : mul([220, 124, 30], 0.78 + 0.22 * Math.abs(Math.cos(Math.atan2(y - 32, x - 32) * 6))); }); // 南瓜顶：中间一个瓜蒂
+    tiles.push((x, y) => mix([34, 96, 40], [120, 180, 76], Math.sin((x + 5 * pn(x, y, 4, 4, 710)) * Math.PI / 8) > 0.2 ? 1 : 0.1 + 0.2 * pn(x, y, 16, 16, 711)));        // 西瓜侧面：深浅相间的绿条纹
+    tiles.push((x, y) => Math.hypot(x - 32, y - 32) < 4 ? [110, 90, 50] : mul([52, 120, 50], 0.85 + 0.25 * pn(x, y, 16, 16, 712)));                                   // 西瓜顶
+    tiles.push((x, y) => pn(x, y, 9, 9, 720) < 0.2 ? [206, 122, 152] : mix([244, 168, 196], [255, 222, 234], fbm(x, y, 721)));                                         // 樱花：一树粉色
+    const fruity = (seed, fruit) => (x, y) => { // 结了果的树叶：绿叶里一颗颗果子
+      const cx = (x % 16) - 8, cy = (y % 16) - 8;
+      if (hash(x >> 4, y >> 4, seed) < 0.45 && Math.hypot(cx, cy * (fruit[3] || 1)) < 3.8) return mul(fruit, cx < -1 && cy < -1 ? 1.2 : 1);
+      return mul(mix([40, 98, 38], [90, 152, 62], fbm(x, y, seed + 1)), 0.75 + 0.45 * pn(x, y, 32, 32, seed + 2));
+    };
+    tiles.push(fruity(730, [208, 40, 46]));          // 苹果树叶：红苹果
+    tiles.push(fruity(740, [246, 176, 40, 0.75]));   // 芒果树叶：黄橙色、长一点的芒果
+    const FRUIT_TILES = [fruity(760, [248, 216, 56, 0.5]), fruity(770, [122, 60, 168]), fruity(780, [222, 72, 96])]; // 78–80：香蕉树叶（细长的黄香蕉）、葡萄藤（紫葡萄）、荔枝树叶（红荔枝）；排在粘液方块后面
+    tiles.push((x, y) => { const e = Math.min(x, y, 63 - x, 63 - y); return mul(mix([84, 184, 74], [156, 232, 124], pn(x, y, 6, 6, 750)), e < 4 ? 0.74 : e < 14 ? 1 : 1.12); }); // 77：粘液方块，绿色果冻，边上深一圈、中间亮一块
+    tiles.push(...FRUIT_TILES);
     const ctx = atlas.getContext('2d'), img = ctx.createImageData(atlas.width, TS);
     const k = U / TS, lum = new Float32Array(TS * TS);
     tiles.forEach((fn, t) => {
@@ -317,7 +404,7 @@
     const custom = localStorage.getItem(PACK);
     if (pack === 'custom' && !custom) pack = 'auto';
     $('pack').value = pack; $('pack').querySelector('[value=custom]').disabled = !custom;
-    const done = () => { tex.needsUpdate = true; foliage.setPack(pack==='natural'); placedTorches.refresh(); for (const k in icons) delete icons[k]; heldId = -1; renderBar(); schedule(); };
+    const done = () => { tex.needsUpdate = true; foliage.setPack(pack==='natural'); placedTorches.refresh(); for (const k in icons) delete icons[k]; heldId = -1; renderBar(); window.refreshArtReview?.(); schedule(); };
     if (pack === 'custom' || pack === 'natural') {
       const img = new Image();
       const natural = pack === 'natural';
@@ -385,7 +472,7 @@
   let sunA = 0, dayK = 1;
   // 高画质档：受光材质 + 一盏投影的平行光。太阳不动，所以阴影贴图只在走远/改方块/建区块时重画，不是每帧
   const MATS = [[solidMat, waterMat], [
-    new THREE.MeshLambertMaterial({ map: tex, vertexColors: true, alphaTest: 0.5 }),
+    new THREE.MeshPhongMaterial({ map: tex, shininess: 4, specular: 0x111111, vertexColors: true, alphaTest: 0.5 }),
     new THREE.MeshPhongMaterial({ map: tex, vertexColors: true, transparent: true, opacity: 0.8, depthWrite: false, specular: 0xfff4d0, shininess: 120 }),
   ]];
   const foliage=new Foliage(tex,ATLAS_TILES,()=>{renderer.shadowMap.needsUpdate=true;schedule();});
@@ -612,11 +699,12 @@
       if(ShoreMotion.tryExit((x,y,z)=>world.get(x,y,z),p,v.x,v.z,surface,hits)){v.y=0;onGround=true;fallFrom=p.y;}
     }
     const hitY = move('y', v.y * dt);
+    const bounce = hitY && v.y < -6 && world.get(Math.floor(p.x), Math.floor(p.y - 0.5), Math.floor(p.z)) === Core.SLIME ? -v.y * 0.8 : 0; if (bounce) fallFrom = p.y; // 落在粘液方块上：弹回去八成的速度，不摔伤
     if (hitY && v.y < 0 && fallFrom - p.y > 4) hurt(Math.floor((fallFrom - p.y - 3) * (equip.includes(148) ? 0 : equip.includes(48) ? 0.5 : 1))); // 摔落：超过 4 格开始掉血；穿滑翔披风减半
     onGround = hitY && v.y < 0;
     fallFrom = onGround || wet || climb ? p.y : Math.max(fallFrom, p.y);
     if ((regenT += dt) > 6) { regenT = 0; if (hp < MAXHP) { hp = Math.min(MAXHP, hp + 1); renderHP(); } } // 每 6 秒回 1 点
-    if (hitY) v.y = 0;
+    if (hitY) v.y = bounce;
   }
   const viewDir = () => [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
   // 挖、放、打用的方向。第一人称就是视线方向；第三人称镜头在右肩后面，要改成“从眼睛指向准星实际对着的那个点”，否则近处的东西打不中
@@ -648,14 +736,15 @@
       const id = world.get(h.x, h.y, h.z);
       digProgress = creative() ? 1 : blockDamage.dig(h,id,selectedItem(),dt); prog = digProgress; if (creative()) held = false; // 创造模式点一下挖一块 saveSoon();
       miningFX.damage(h,id,prog,dt);
-      if (prog >= 1) { miningFX.break(h,id); setBlock(h.x, h.y, h.z, AIR); give(window.Home ? Home.dug(h, id) : id); digKey = ''; prog = 0; }
+      if (prog >= 1) { miningFX.break(h,id); setBlock(h.x, h.y, h.z, AIR); const got = window.Farm ? Farm.dug(h, id) : undefined; if (got === undefined) give(window.Home ? Home.dug(h, id) : id); else if (got) give(got); digKey = ''; prog = 0; }
     } else miningFX.reset();
     $('prog').style.width = prog * 40 + 'px';
   }
   function place() {
     const id = selectedItem(), h = aim();
+    if (window.Farm && Farm.use(h, id)) { swing = 0.3; renderBar(); return saveSoon(); }              // 种子、肥料、水桶、新植物：见 farm.js
     if (window.Home && Home.use(h, id)) { swing = 0.3; renderHP(); renderBar(); return saveSoon(); } // 门、床、浆果丛、种植等：见 home.js
-    if (id === MEAT && inv[id] && hp < MAXHP) { inv[id]--; hp = Math.min(MAXHP, hp + 4); swing = 0.3; renderHP(); renderBar(); return saveSoon(); } // 右键吃肉回 4 点
+    if (MEATS[id] && inv[id] && hp < MAXHP) { inv[id]--; hp = Math.min(MAXHP, hp + MEATS[id]); swing = 0.3; renderHP(); renderBar(); return saveSoon(); } // 右键吃肉回 4 点
     if(h&&id===TORCH&&inv[id]){if(placedTorches.place(h)){if(!creative())inv[id]--;swing=.3;renderBar();saveSoon();}return;}
     if (!h || h.torch || !isBlock(id) || !inv[id]) return;
     const x = h.x + h.n[0], y = h.y + h.n[1], z = h.z + h.n[2];
@@ -717,6 +806,17 @@
   const SNOWY = { [FUR]: '#f2f4f6', [FUR2]: '#e0e5ea', [DEER]: '#b9b2a8', [DEER2]: '#9a938a' }, SANDY = { [DEER]: '#d6ac6c', [DEER2]: '#b98f54' };
   const FOX = '#dcb47c', FOX2 = '#c2985e';
   TYPES[0].on = TYPES[1].on = 1; TYPES[1].hide = 2;
+  // 熊猫：只在竹子附近的草地上出现，最多 2 只；走得慢，不掉肉（不是给人打的）
+  const PWHITE = '#f4f1ea', PBLACK = '#221e1c', PANDA = { name: '熊猫', hp: 14, speed: 0.8, run: 2.6, r: 0.5, h: 1.3,
+    legs: [[0.22, 0.36, 0.3], [-0.22, 0.36, 0.3], [0.22, 0.36, -0.3], [-0.22, 0.36, -0.3]],
+    legGeo: boxes([[0.22, 0.36, 0.24, 0, -0.18, 0, PBLACK]]),
+    geo: boxes([
+      [0.7, 0.58, 0.96, 0, 0.62, 0, PWHITE], [0.74, 0.6, 0.3, 0, 0.62, 0.24, PBLACK],                       // 白身子，肩上一圈黑
+      [0.52, 0.46, 0.42, 0, 0.94, 0.62, PWHITE], [0.22, 0.16, 0.12, 0, 0.84, 0.86, '#fbf9f4'],               // 大圆脑袋，白嘴巴
+      ...both([0.15, 0.14, 0.08, 0.21, 1.21, 0.6, PBLACK]), ...both([0.13, 0.15, 0.03, 0.13, 0.98, 0.835, PBLACK]), // 黑耳朵，黑眼圈
+      ...both([0.04, 0.05, 0.02, 0.13, 0.99, 0.855, '#fbf9f4']), [0.09, 0.06, 0.03, 0, 0.9, 0.925, PBLACK],  // 眼睛里一点白，黑鼻头
+      [0.16, 0.14, 0.1, 0, 0.66, -0.52, PWHITE]]) };
+  const bambooNear = (x, y, z) => { for (let dx = -5; dx <= 5; dx++) for (let dz = -5; dz <= 5; dz++) for (let dy = 0; dy <= 2; dy++) if (world.get(x + dx, y + dy, z + dz) === 89) return true; return false; };
   TYPES.push(
     { ...TYPES[0], name: '雪兔', on: 15, geo: dye(TYPES[0].geo, SNOWY) },
     { ...TYPES[1], name: '驯鹿', on: 15, hide: 2, geo: dye(TYPES[1].geo, SNOWY), legGeo: dye(TYPES[1].legGeo, SNOWY) },
@@ -749,6 +849,11 @@
       ...both([0.05, 0.14, 0.05, 0.13, 0.46, 0.73, CREAM]), ...both([0.03, 0.05, 0.05, 0.2, 0.62, 0.6, DARK]), ...both([0.08, 0.1, 0.05, 0.16, 0.76, 0.5, '#5a3e2c']),
       ...both([0.13, 0.34, 0.13, 0.16, 0.17, 0.3, '#4e3626']), ...both([0.13, 0.34, 0.13, 0.16, 0.17, -0.3, '#4e3626']), [0.05, 0.05, 0.12, 0, 0.7, -0.5, '#3a2a20']]) },
   };
+  // 史莱姆：夜里草原上一蹦一蹦的绿色果冻，很弱；打掉固定掉 1 个粘液方块
+  FOES.slime = { name: '史莱姆', foe: true, hostile: true, lv: 1, hp: 8, dmg: 1, speed: 1.3, run: 1.8, hop: true, r: 0.35, h: 0.62, kb: 2.5, drops: { [Core.SLIME]: 1 }, geo: boxes([
+    [0.6, 0.5, 0.6, 0, 0.27, 0, '#6cc24a'], [0.5, 0.08, 0.5, 0, 0.55, 0, '#8ada66'], [0.16, 0.12, 0.16, 0.15, 0.44, 0.15, '#b4f09a'],
+    ...both([0.09, 0.11, 0.03, 0.14, 0.34, 0.305, DARK]), [0.2, 0.04, 0.03, 0, 0.19, 0.305, DARK]]) };
+  for (const k of ['blob', 'vine', 'boar']) FOES[k].drops[105] = 1; // 泥团、缠藤、鬃猪各掉 1 袋肥料（固定掉落）
   // —— 第二步：会飞的和浅水里的（PRD FR-021）。fly 飞 / swim 游 / ghost 能穿过方块 / erratic 飞得飘忽 / drift 随水漂、不追人 / cave 只在洞里
   //    fearsLight 怕火把 / wantsFood 你拿着食物才来 / likesLight 绕着灯飞 / slows 碰到后减速 / shell 正面有壳 / sad 打它 Wick 会难过 ——
   Object.assign(FOES, {
@@ -863,12 +968,12 @@
   function drift(m, dt, q, bite) { // 会飞和会游的：没有重力，朝一个目标点靠拢。飞的不进实心方块，游的不出水，霜灵什么都能穿
     const T = m.type, dd = Math.hypot(m.x - q.x, m.y - (q.y + 1), m.z - q.z), torch = q.held === TORCH;
     if (!T.day && dayK > 0.5) { m.hp = 0; return; }                                                   // 夜行的天亮消散
-    const food = [MEAT, 32, 112, 115].includes(q.held), inWater = world.get(Math.floor(q.x), Math.floor(q.y + 0.5), Math.floor(q.z)) === WATER;
-    let mean = !q.dn && !!T.hostile && !T.drift && dd < 14 && !(T.wantsFood && !food) && !(T.swim && !inWater); // 啄鸦只在你拿着食物时来；鱼只在你下水时追
+    const food = [MEAT, 32, 112, 115, 268, 269, 270, 271, 272].includes(q.held), inWater = world.get(Math.floor(q.x), Math.floor(q.y + 0.5), Math.floor(q.z)) === WATER;
+    let mean = !q.dn && !q.calm && !!T.hostile && !T.drift && dd < 14 && !(T.wantsFood && !food) && !(T.swim && !inWater); // 啄鸦只在你拿着食物时来；鱼只在你下水时追
     const scared = (T.fearsLight && torch && dd < 6) || (q.dn && !!T.hostile && dd < 10); /* 对手倒下了：飞走 */                                                   // 洞蝠、霜灵怕火把
     const near = j => { const hx = m.x - q.x, hz = m.z - q.z, hd = Math.hypot(hx, hz) || 1, r = (T.reach || 1.3) - 0.15; return [q.x + hx / hd * r + (Math.random() - 0.5) * j * 0.4, q.y + 1 + (Math.random() - 0.5) * j, q.z + hz / hd * r + (Math.random() - 0.5) * j * 0.4]; }; // 扑向玩家时停在够得着的距离上，不钻进身体里
     let warn = false;
-    if (T.cycle && !q.dn && dd < 24 && !(T.swim && !inWater)) { // 盘旋 → 发亮预警 1 秒 → 俯冲 → 休息
+    if (T.cycle && !q.dn && !q.calm && dd < 24 && !(T.swim && !inWater)) { // 盘旋 → 发亮预警 1 秒 → 俯冲 → 休息
       const [orbit, dive, rest, r, up] = T.cycle;
       m.cy = ((m.cy || 0) + dt) % (orbit + 1 + dive + rest);
       if (T.wantsWeak && !q.low && m.cy > orbit - 0.2) m.cy = 0;                                       // 沙鹫：你的生命不到一半才下来，否则一直盘旋
@@ -891,7 +996,7 @@
     if (to) { if (sp > 1e-4 && (to[0] !== m.x || to[2] !== m.z)) m.a = Math.atan2(to[0] - m.x, to[2] - m.z); m.x = to[0]; m.y = to[1]; m.z = to[2]; }
     else m.t = 0;                                                                                     // 去不了：马上换个目标
     const drag = Math.exp(-6 * dt); m.kx *= drag; m.kz *= drag;
-    if (T.hostile && !q.dn && (mean || T.drift) && dd < (T.reach || 1.3) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; if (!T.drift) m.a = Math.atan2(q.x - m.x, q.z - m.z); bite(q, T.dmg, T.slows, T.push && [(q.x - m.x) / (dd || 1) * T.push, (q.z - m.z) / (dd || 1) * T.push]); } // 碰到才受伤；霜灵再加 3 秒减速
+    if (T.hostile && !q.dn && !q.calm && (mean || T.drift) && dd < (T.reach || 1.3) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; if (!T.drift) m.a = Math.atan2(q.x - m.x, q.z - m.z); bite(q, T.dmg, T.slows, T.push && [(q.x - m.x) / (dd || 1) * T.push, (q.z - m.z) / (dd || 1) * T.push]); } // 碰到才受伤；霜灵再加 3 秒减速
     if (T.cave && !covered(m.x, m.y, m.z)) { if ((m.out = (m.out || 0) + dt) > 4) m.hp = 0; } else m.out = 0; // 洞蝠离开洞穴 4 秒就散
     m.sq -= dt; m.ph += dt * 10;
     m.mobMat.emissive.setRGB(Math.max(0,m.sq)/.24*.85,0,0); if (warn && m.sq <= 0) m.mobMat.emissive.setHex(0xaa8800); // 俯冲前发亮
@@ -904,6 +1009,7 @@
     const pick = [];
     const shore = [3, 6].some(r => [[r, 0], [-r, 0], [0, r], [0, -r]].some(([dx, dz]) => world.get(x + dx, Core.SEA, z + dz) === WATER)); // 6 格内有水面
     const trunk = () => { for (let dx = -3; dx <= 3; dx++) for (let dz = -3; dz <= 3; dz++) if (world.get(x + dx, y + 1, z + dz) === 6) return true; return false; }; // 3 格内有树干
+    if (dayK < 0.45 && !shore && top === 1 && Core.biomeAt(x, z) === 0 && count(FOES.slime) < 2) pick.push(FOES.slime);    // 史莱姆：黄昏和夜晚，离水远的草原
     if (dayK < 0.45 && shore && (top === 1 || top === 4) && Core.biomeAt(x, z) === 0) pick.push(FOES.blob);               // 泥团：黄昏和夜晚，草原的水边（草地或沙滩）
     if (dayK < 0.45 && top === 4 && Core.biomeAt(x, z) === 1) pick.push(FOES.scorpion);                                  // 沙蝎：黄昏和夜晚，沙漠
     if (top === 1 && count(FOES.vine) < 2 && trunk()) pick.push(FOES.vine);                                               // 缠藤：树下，任何时间
@@ -917,14 +1023,15 @@
     const n = mobs.length; spawnMob(ok[Math.floor(Math.random() * ok.length)], { x, z });
     if (mobs.length > n) { mobs[n].t = 0; mobs[n].a = ang; }
   }
-  const mobs = []; let spawnT = 0;
+  const mobs = [], SAFE_R = 96; let spawnT = 0, homeAt = null; // SAFE_R：出生点周围多少格算新手区
   function spawnMob(force,point) {
     const ang = Math.random() * 6.283, d = 14 + Math.random() * Math.min(16, R * CH - 22);
     const x = point ? point.x : Math.floor(p.x + Math.sin(ang) * d), z = point ? point.z : Math.floor(p.z + Math.cos(ang) * d);
     let y = H - 1; while (y > 0 && world.get(x, y, z) === AIR) y--;
     const top = world.get(x, y, z), kinds = TYPES.filter(t => t.on === top); // 最上面一块决定刷什么（树冠、水、岩石不刷）
     if (force ? top === AIR || top === WATER || top === 7 : !kinds.length || (top === 4 && Core.biomeAt(x, z) !== 1)) return; // 沙子只认沙漠，海滩不算
-    const type = force || kinds[Math.random() < 0.6 ? 0 : 1], mesh = new THREE.Group();
+    const panda = !force && top === 1 && mobs.filter(m => m.type === PANDA).length < 2 && bambooNear(x, y, z);
+    const type = force || (panda ? PANDA : kinds[Math.random() < 0.6 ? 0 : 1]), mesh = new THREE.Group();
     mesh.scale.setScalar(type.scale || 1);
     const mobMat=itemMat.clone();mobMat.userData.skyExposure=WorldLighting.object(mobMat);
     mesh.add(new THREE.Mesh(type.geo, mobMat));
@@ -969,14 +1076,14 @@
     m.hp -= dealt; m.flee = m.type.foe ? 0 : 4; if (m.type.charge) m.angry = 6; m.sq = 0.15; if (kb) { m.vy = 5; m.ground = false; } m.kx = dx * 6 * kb; m.kz = dz * 6 * kb;
     if (m.hp > 0 || m.looted) return null;
     m.looted = true;
-    const loot = { ...(m.type.drops || {}) }; if (m.type.meat) loot[MEAT] = m.type.meat; if (m.type.hide) loot[HIDE] = m.type.hide;
+    const loot = { ...(m.type.drops || {}) }; if (m.type.meat) loot[FLESH[m.type.name] || MEAT] = m.type.meat; /* 什么动物掉什么肉；没列的掉普通生肉 */ if (m.type.hide) loot[HIDE] = m.type.hide;
     return loot;
   }
   function mobHit(id, dealt, dx, dz) { const m = mobs.find(m => m.id === id && m.hp > 0); return m ? { loot: strike(m, dealt, dx, dz), sad: !!m.type.sad } : null; }
   function takeLoot(loot, sad) { for (const id in loot) give(+id, loot[id]); if (sad) Lang.say('Oh no. Poor moth.', false, 1.4); }
   function tickMobs(dt) {
     if (window.Net && Net.guest) return mirrorMobs(dt);                       // 联机访客：生物由主机计算，这里只显示
-    p.held = selectedItem(); p.cloak = equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; p.low = hp < MAXHP / 2; p.dn = dead;                        // 怪物看的是“最近的那个玩家”，联机时可能是别人
+    p.held = selectedItem(); p.cloak = equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; p.low = hp < MAXHP / 2; p.dn = dead; p.calm = creative(); /* 创造模式：怪物不主动攻击你，照常闲逛 */                        // 怪物看的是“最近的那个玩家”，联机时可能是别人
     const everyone = window.Net ? [p, ...Net.others()] : [p];
     const alive = everyone.filter(e => !e.dn), targets = alive.length ? alive : everyone; /* 倒下的玩家不算目标；全都倒下了才看倒下的（只为算距离，不会再咬） */
     const near = m => targets.reduce((a, b) => Math.hypot(b.x - m.x, b.z - m.z) < Math.hypot(a.x - m.x, a.z - m.z) ? b : a);
@@ -984,7 +1091,12 @@
     if (!animalPreview && (spawnT -= dt) < 0) { // 夜里优先补影狼（最多 3 只），其余时间补普通动物（最多 8 只）
       spawnT = 1.5; const c = everyone[Math.floor(Math.random() * everyone.length)], keep = [p.x, p.y, p.z]; p.x = c.x; p.y = c.y; p.z = c.z; // ponytail: 刷怪函数都围着 p 找位置，联机时临时把 p 挪到被选中的玩家那里，刷完挪回来
       const foes = mobs.filter(m => m.type.foe).length;
-      if (foes < 6) { spawnFoe(); spawnDrifter(); } // 怪物同时最多 6 只，同一种最多 3 只
+      homeAt = homeAt || spawnPos();
+      const calm = dayK > 0.5 && Math.hypot(p.x - homeAt.x, p.z - homeAt.z) < SAFE_R; // 出生点附近的白天：怪物最多 2 只，补得也慢（每次只有 1/4 的机会），新手先学会挖和做工具
+      if (foes < (calm ? 2 : 6) && !(calm && Math.random() < 0.75)) {
+        const n = mobs.length; spawnFoe(); spawnDrifter();
+        if (calm) while (mobs.length > n && mobs.filter(m => m.type.foe).length > 2) { const m = mobs.pop(); scene.remove(m.mesh); m.mobMat.dispose(); } // 一次来一群的（咬咬鱼）也不能超过 2 只
+      } // 别处和夜里：怪物同时最多 6 只，同一种最多 3 只
       if (mobs.length - foes < 8) spawnMob();       // 普通动物最多 8 只
       p.x = keep[0]; p.y = keep[1]; p.z = keep[2];
     }
@@ -1005,7 +1117,7 @@
         if (T.sleeper && !m.awake) { if (m.wake) { if ((m.wake -= dt) <= 0) m.awake = true; } else if (dd < T.sleeper) m.wake = 2; m.walk = false; m.t = 9; } // 岩偶：走到 3 格内才醒，起身要 2 秒
         if (T.burrow) m.up = dd < 2.5 ? (m.up || 0) + dt : 0;                                   // 沙虫：到你身边才钻出来，钻出 1 秒后才咬
         const onSand = !T.burrow || world.get(Math.floor(q.x), Math.floor(q.y - 0.5), Math.floor(q.z)) === 4; // 你站在岩石或砖上它上不来
-        const mean = !q.dn && (T.hostile || m.angry > 0) && !(T.sleeper && !m.awake) && onSand && !(T.burrow && dd < 2.5 && m.up < 1),
+        const mean = !q.dn && !q.calm && (T.hostile || m.angry > 0) && !(T.sleeper && !m.awake) && onSand && !(T.burrow && dd < 2.5 && m.up < 1),
           sight = q.cloak === 2 ? 12 : T === WOLF && q.cloak ? 8 : 18; // 影行斗篷：所有怪物 12 格外不发现你 // 穿着夜行斗篷，影狼 8 格外不发现你
         if (!T.day && dayK > 0.5) m.hp = 0;                                                    // 夜行的怪物天亮消散
         else if (T.still) { m.walk = false; m.t = 9; }                                         // 缠藤不会走
@@ -1032,24 +1144,39 @@
       m.mesh.visible = seen(m);
     }
   }
-  function attack() { // 准星射线对动物包围盒；比方块近才算打中。打中返回 true
+  let noAmmoAt = -1e9;
+  function muzzleAt(gun) { // 第一人称：手里那件武器的枪口（箭头）在画面上的位置，换算成世界里镜头前 1.1 格的一个点。手是单独一层画的，所以要先投到屏幕再投回去
+    const m = holder.children[1];
+    if (!m || (window.ThirdPerson && ThirdPerson.on)) return null;
+    holder.updateMatrixWorld(true); handCam.updateMatrixWorld(true);
+    const tip = new THREE.Vector3(...gun.muzzle).applyMatrix4(m.matrixWorld).project(handCam);
+    const ray = new THREE.Vector3(tip.x, tip.y, 0.5).unproject(camera).sub(camera.position).normalize();
+    return camera.position.clone().addScaledVector(ray, 1.1);
+  }
+  function attack() { // 准星射线对动物包围盒；比方块近才算打中。打中返回 true。手里是弓、弩、枪时射得远，每一下用掉一发弹药（ranged.js）
     if(!hotbarActive)return false;
-    const o = [p.x, p.y + EYE, p.z], d = lookDir(), h = aim();
-    let best = null, bt = Math.min(4, h ? h.t : 4);
+    const item = selectedItem(), gun = window.Ranged && Ranged.WEAPONS[item];
+    if (gun) {
+      if (attackCooldown > 0) return true;
+      if (!creative() && !(inv[gun.ammo] > 0)) { if (performance.now() - noAmmoAt > 3000) { noAmmoAt = performance.now(); Lang.say(gun.ammo === 264 ? 'I need arrows.' : 'I need pellets.', false, 1.4); } return true; }
+    }
+    const o = [p.x, p.y + EYE, p.z], d = lookDir(), reach = gun ? gun.reach : 4, h = gun ? raycast((x, y, z) => world.get(x, y, z), o, d, reach) : aim();
+    let best = null, bt = Math.min(reach, h ? h.t : reach);
     for (const m of mobs) {
       if(m.hp<=0)continue;
       const t=MobPhysics.ray(m,o,d,bt);
       if(t!==null && (!h||t<h.t-1e-4)){best=m;bt=t;}
     }
     const rival = window.Net && Net.pkTarget(o, d, bt);                        // 联机且主机允许互相攻击：准星上更近的是别的玩家
-    if (rival) { if (attackCooldown > 0) return true; attackCooldown = .4; swing = 0.3; const dealt = DMG[selectedItem()] || 1; Net.pkHit(rival.id, dealt);
+    const power = gun ? gun.dmg : DMG[item] || 1;
+    if (gun) { attackCooldown = gun.cd; if (!creative()) inv[gun.ammo]--; swing = 0.3; renderBar(); Ranged.tracer(o, d, bt, item, !best && !rival && bt >= reach - 1e-3, muzzleAt(gun)); CombatAudio.swing(); } // 射出去了：不管打没打中都用掉一发
+    if (rival) { if (!gun) { if (attackCooldown > 0) return true; attackCooldown = .4; swing = 0.3; } const dealt = power; Net.pkHit(rival.id, dealt);
       hitNotice.textContent = `${rival.name} −${dealt}`; hitNoticeTime = .9; hitNotice.style.display = 'block'; return true; }
-    if (!best) return false;
-    if(attackCooldown>0)return true;
-    attackCooldown=.4;
+    if (!best) return !!gun;
+    if (!gun) { if(attackCooldown>0)return true; attackCooldown=.4; }
     const front = best.type.shell && d[0] * Math.sin(best.a) + d[2] * Math.cos(best.a) < -0.3;   // 钳蟹：迎着它的正面打，只掉 1 点
-    let dealt = front ? 1 : (DMG[selectedItem()] || 1) * (best.type.weak === selectedItem() ? 2 : 1); // weak：这种工具对它伤害加倍
-    if (best.type.plate && ![28, 29].includes(selectedItem())) dealt = Math.max(1, dealt - best.type.plate); // 黑曜卫士：每下先减 3 点；岩心镐和黑曜剑不受影响
+    let dealt = front ? 1 : power * (best.type.weak === item ? 2 : 1); // weak：这种工具对它伤害加倍
+    if (best.type.plate && ![28, 29].includes(item)) dealt = Math.max(1, dealt - best.type.plate); // 黑曜卫士：每下先减 3 点；岩心镐和黑曜剑不受影响
     swing = 0.3;
     if (window.Net && Net.guest) { best.sq = 0.15; best.hp -= dealt; Net.hit(best.id, dealt, d[0], d[2]); } // 访客：报给主机，掉落由主机发回来
     else { const loot = strike(best, dealt, d[0], d[2]); if (loot) takeLoot(loot, best.type.sad); }
@@ -1089,11 +1216,31 @@
     37: [[0.4, 0.3, 0.08, 0, 0.42, 0, '#2e2a36'], [0.3, 0.2, 0.09, 0, 0.42, 0, '#46405a'], [0.1, 0.1, 0.08, 0.2, 0.62, 0, '#2e2a36'], [0.1, 0.1, 0.08, -0.2, 0.62, 0, '#2e2a36']], // 影毛
     46: [0.12, -0.12].flatMap(x => [[0.15, 0.28, 0.14, x, 0.5, 0, '#c9a46a'], [0.2, 0.11, 0.14, x + 0.025, 0.32, 0, '#b08a50']]),                                 // 蝎壳靴
     47: [[0.36, 0.44, 0.2, 0, 0.42, 0, '#2e2a36'], [0.13, 0.16, 0.2, 0.24, 0.56, 0, '#46405a'], [0.13, 0.16, 0.2, -0.24, 0.56, 0, '#46405a'], [0.2, 0.12, 0.2, 0, 0.7, 0, '#201c28']], // 夜行斗篷
+    ...Object.fromEntries([[100, '#7a3a2a', '#5c2a20'], [101, '#3a3630', '#d8d2c0'], [102, '#e8dcc0', '#c8b890'], [103, '#b08a50', '#8a6a3a'], [104, '#2e2a26', '#4a4038']].map(([id, a, b]) => [id, [[0.12, 0.12, 0.12, -0.1, 0.38, 0, a], [0.12, 0.12, 0.12, 0.08, 0.42, 0, b], [0.1, 0.1, 0.1, -0.01, 0.54, 0, a], [0.09, 0.09, 0.09, 0.12, 0.58, 0, b]]])), // 100–104 种子：玫瑰 向日葵 百合 水仙 油菜
+    259: [[0.14, 0.05, 0.2, -0.08, 0.38, 0, '#e8dcb0'], [0.14, 0.05, 0.2, 0.09, 0.44, 0, '#d8c890'], [0.12, 0.05, 0.18, 0, 0.52, 0, '#e8dcb0']], // 南瓜籽：扁扁的白籽
+    256: [[0.1, 0.34, 0.1, -0.1, 0.44, 0, '#f4d23c'], [0.1, 0.36, 0.1, 0, 0.46, 0, '#f8dc4a'], [0.1, 0.34, 0.1, 0.1, 0.44, 0, '#f4d23c'], [0.26, 0.06, 0.1, 0, 0.66, 0, '#6e5a20']], // 香蕉：一把三根
+    257: [[0.12, 0.12, 0.12, -0.1, 0.5, 0, '#7a3ca8'], [0.12, 0.12, 0.12, 0.04, 0.52, 0, '#8a4cb8'], [0.12, 0.12, 0.12, -0.03, 0.4, 0, '#6a2c98'], [0.12, 0.12, 0.12, 0.1, 0.4, 0, '#7a3ca8'], [0.11, 0.11, 0.11, 0.03, 0.29, 0, '#6a2c98'], [0.04, 0.1, 0.04, 0, 0.62, 0, '#4a8a3a']], // 葡萄：一小串
+    258: [[0.26, 0.26, 0.26, 0, 0.42, 0, '#d8465a'], [0.2, 0.06, 0.2, 0, 0.57, 0, '#b83448'], [0.04, 0.08, 0.04, 0, 0.63, 0, '#6e4420']], // 荔枝
+    260: [[0.1, 0.06, 0.14, -0.08, 0.38, 0, '#26201c'], [0.1, 0.06, 0.14, 0.09, 0.44, 0, '#3a302a'], [0.09, 0.06, 0.13, 0, 0.52, 0, '#26201c']], // 西瓜籽：小黑籽
+    177: [[0.3, 0.28, 0.3, 0, 0.42, 0, '#d0282e'], [0.2, 0.06, 0.2, 0, 0.58, 0, '#b02026'], [0.04, 0.1, 0.04, 0, 0.64, 0, '#6e4420'], [0.1, 0.03, 0.06, 0.06, 0.66, 0, '#4a8a3a']], // 苹果
+    178: [[0.26, 0.34, 0.24, 0, 0.44, 0, '#f6b028'], [0.2, 0.1, 0.2, 0.02, 0.62, 0, '#f08a2a'], [0.04, 0.08, 0.04, 0, 0.7, 0, '#6e4420']], // 芒果
+    261: [[0.05, 0.62, 0.06, 0, 0.16, 0.04, '#8a5a2c'], [0.05, 0.12, 0.06, 0, 0.51, -0.01, '#8a5a2c'], [0.05, 0.12, 0.06, 0, -0.19, -0.01, '#8a5a2c'], [0.016, 0.78, 0.016, 0, 0.16, -0.06, '#e8e0c8'], [0.07, 0.16, 0.07, 0, 0.16, 0.04, '#6e4420']], // 弓：竖着拿，握把在中间；弓臂两头往回弯，弦在靠自己的一侧。+z 是射出去的方向
+    262: [[0.06, 0.22, 0.08, 0, 0.15, 0, '#5a3a1e'], [0.08, 0.1, 0.62, 0, 0.3, 0.16, '#6e4420'], [0.62, 0.06, 0.06, 0, 0.32, 0.42, '#9a968e'], [0.58, 0.016, 0.016, 0, 0.32, 0.24, '#e8e0c8'], [0.04, 0.04, 0.3, 0, 0.37, 0.28, '#c9a26a']], // 弩：握把在下，木托向前伸，前头横着铁弓，槽里一支箭
+    263: [[0.07, 0.22, 0.09, 0, 0.15, 0, '#6e4420'], [0.1, 0.13, 0.3, 0, 0.31, 0.08, '#8a5a2c'], [0.07, 0.07, 0.6, 0, 0.35, 0.44, '#6c6a66'], [0.09, 0.09, 0.05, 0, 0.35, 0.75, '#3a3836'], [0.03, 0.05, 0.03, 0, 0.41, 0.68, '#3a3836']], // 猎枪：握把在下，木枪身，铁枪管向前，枪口和准星
+    264: [[0.03, 0.6, 0.03, 0, 0.45, 0, '#c9a26a'], [0.07, 0.1, 0.07, 0, 0.79, 0, '#9a968e'], [0.1, 0.12, 0.02, 0, 0.19, 0, '#2a2a30'], [0.02, 0.12, 0.1, 0, 0.19, 0, '#2a2a30']], // 箭：木杆、铁箭头、黑羽
+    265: [[0.12, 0.12, 0.12, -0.09, 0.38, 0, '#8a8680'], [0.12, 0.12, 0.12, 0.08, 0.4, 0.04, '#6c6a66'], [0.12, 0.12, 0.12, 0, 0.5, -0.02, '#9a968e']], // 弹丸：几颗小铁珠
+    266: [[0.3, 0.07, 0.3, 0, 0.38, 0, '#e8e0c8'], [0.22, 0.07, 0.22, 0, 0.45, 0, '#d8cfb4'], [0.1, 0.05, 0.1, 0, 0.51, 0, '#e8e0c8']], // 弓弦：盘起来的一卷
+    267: [[0.3, 0.1, 0.3, 0, 0.38, 0, '#3a3632'], [0.2, 0.09, 0.2, 0, 0.47, 0, '#4a4640'], [0.1, 0.07, 0.1, 0, 0.55, 0, '#2c2826']], // 火药：一小堆黑粉
+    105: [[0.34, 0.36, 0.2, 0, 0.42, 0, '#8a6a40'], [0.2, 0.08, 0.14, 0, 0.64, 0, '#6e5230'], [0.18, 0.12, 0.21, 0, 0.42, 0, '#5c8a3a']], // 肥料：一小袋，袋上一块绿标
+    ...Object.fromEntries([[106, '#a8743a', '#6e4420', 0], [107, '#a8743a', '#6e4420', 1], [108, '#a09c94', '#6c6a66', 0], [109, '#a09c94', '#6c6a66', 1]].map(([id, body, band, full]) => [id, [[0.34, 0.34, 0.34, 0, 0.4, 0, body], [0.38, 0.05, 0.38, 0, 0.57, 0, band], [0.36, 0.05, 0.36, 0, 0.3, 0, band], [0.04, 0.16, 0.04, -0.17, 0.66, 0, band], [0.04, 0.16, 0.04, 0.17, 0.66, 0, band], [0.38, 0.04, 0.04, 0, 0.75, 0, band], ...(full ? [[0.3, 0.03, 0.3, 0, 0.6, 0, '#4aa0d8']] : [])]])), // 106–109 木桶、装了水的木桶、铁桶、装了水的铁桶
     32: [[0.16, 0.16, 0.16, -0.09, 0.38, 0, '#c0304a'], [0.16, 0.16, 0.16, 0.09, 0.42, 0, '#d2445c'], [0.14, 0.14, 0.14, 0, 0.54, 0, '#ac2440'], [0.04, 0.1, 0.04, 0, 0.66, 0, '#4a8a3a']], // 浆果
     [MEAT]: [[0.05, 0.1, 0.05, 0, 0.2, 0, '#efe6d6'], [0.1, 0.06, 0.07, 0, 0.14, 0, '#efe6d6'], [0.3, 0.3, 0.12, 0, 0.42, 0, '#b8463c'],
       [0.22, 0.22, 0.13, 0, 0.42, 0, '#d0655a'], [0.3, 0.05, 0.125, 0, 0.59, 0, '#f1d9c8']],
     [TORCH]: [[0.05, 0.5, 0.05, 0, 0.25, 0, WOOD], [0.09, 0.1, 0.09, 0, 0.54, 0, '#3a2a1a'], [0.08, 0.12, 0.08, 0, 0.64, 0, '#ff9a20'], [0.045, 0.1, 0.045, 0, 0.73, 0, '#ffe890']],
   };
+  for (let i = 0; i < 6; i++) TOOLS[273 + i] = TOOLS[MEAT].map(q => [...q.slice(0, 6), q[6] === '#b8463c' ? '#8a5230' : q[6] === '#d0655a' ? '#a8683c' : q[6] === '#f1d9c8' ? '#6a3c20' : q[6]]); // 273–278 烤熟的肉：同一个模型，烤成焦褐色
+  TOOLS[279] = TOOLS[112].map(q => [...q.slice(0, 6), q[6] === '#7a9aa8' ? '#b8843c' : q[6] === '#5a7a88' ? '#8a5a28' : q[6]]);                                                        // 烤鱼
+  for (const [id, a, b] of [[268, '#d89a8a', '#e8b4a4'], [269, '#8a2e2a', '#a8443c'], [270, '#a04a34', '#bc6248'], [271, '#c06a4a', '#d4866a'], [272, '#e08a8a', '#f0a8a4']]) TOOLS[id] = TOOLS[MEAT].map(q => [...q.slice(0, 6), q[6] === '#b8463c' ? a : q[6] === '#d0655a' ? b : q[6]]); // 各种肉：和生肉同一个模型，换颜色（兔肉浅粉、鹿肉深红、羚羊肉红褐、狐肉橙红、猪肉粉）
   const LEA = '#9a6a3e', LEA2 = '#74502e', PLATE = '#cdd6e2', PLATE2 = '#8f9cac';
   const helm = (c, d) => [[0.34, 0.22, 0.3, 0, 0.5, 0, c], [0.42, 0.07, 0.3, 0, 0.37, 0, d], [0.1, 0.1, 0.3, 0, 0.65, 0, d]];
   const vest = (c, d) => [[0.34, 0.42, 0.2, 0, 0.42, 0, c], [0.13, 0.16, 0.2, 0.23, 0.55, 0, d], [0.13, 0.16, 0.2, -0.23, 0.55, 0, d], [0.34, 0.07, 0.2, 0, 0.23, 0, d]];
@@ -1141,8 +1288,9 @@
   holder.position.set(0.5, -0.5, -1); holder.scale.setScalar(0.72);
   const heldMat = new THREE.MeshLambertMaterial({ map: tex });
   let heldId = -1, swing = 0, heldHand=null;
-  function beginSwing(){if(!hotbarActive)return;swing=.3;if(selectedItem()===SWORD||selectedItem()===SWORD2)CombatAudio.swing();}
-  const HELD_YAW = { [PICK]: 0.3, [PICK2]: 0.3, 19: 0.3, 28: 0.3, 16: 0.3, [AXE]: Math.PI + 0.3, 17: Math.PI + 0.3 }; // 镐头沿前后方向握持，镐尖顺着挥动方向
+  function beginSwing(){if(!hotbarActive||(window.Ranged&&Ranged.WEAPONS[selectedItem()]))return; /* 远程武器不挥：射出去那一下才有后坐（attack 里设 swing） */ swing=.3;if(selectedItem()===SWORD||selectedItem()===SWORD2)CombatAudio.swing();}
+  const AIM_YAW = 0.001; // 弓、弩、枪：手不带着转（模型自己在 setHeld 里摆正，射出去的方向顺着视线，和准星在一条线上）。写成极小的数是因为下面用 || 取默认值
+  const HELD_YAW = { 261: AIM_YAW, 262: AIM_YAW, 263: AIM_YAW, [PICK]: 0.3, [PICK2]: 0.3, 19: 0.3, 28: 0.3, 16: 0.3, [AXE]: Math.PI + 0.3, 17: Math.PI + 0.3 }; // 镐头沿前后方向握持，镐尖顺着挥动方向
   function setHeld(id) {
     if (id === heldId) return; heldId = id;
     holder.visible=id!==null;heldHand=null;
@@ -1162,15 +1310,14 @@
     if (id === SWORD || id === SWORD2) return holder.add((id===SWORD2?StoneTools.ironSword:StoneTools.sword)(pack==='natural'));
     if (id === AXE) return holder.add(StoneTools.axe(pack === 'natural'));
     if (id === SHOVEL) return holder.add(StoneTools.shovel(pack === 'natural'));
+    if (window.Ranged && Ranged.WEAPONS[id]) { // 握把放进拳头里（y≈0.16），射出去的方向转到正前方（镜头看的方向是 -z）
+      const m = Ranged.mount(ItemArt.create(id,TOOLS[id],pack==='natural'), id); m.rotation.y = Math.PI; m.position.set(0, 0.16, 0);
+      return holder.add(m);
+    }
     if (!isBlock(id)) return holder.add(ItemArt.create(id,TOOLS[id],pack==='natural'));
-    if(BuildingIcons.supports(id)&&!Core.WOODS.some(w=>w.plank===id)){
-      const group=new THREE.Group(),scale=Core.ladderInfo(id)?.45:.32;
-      for(const q of Core.shapeBoxes(id)){
-        const geo=new THREE.BoxGeometry((q[3]-q[0])*scale,(q[4]-q[1])*scale,(q[5]-q[2])*scale),uv=geo.attributes.uv;
-        for(let i=0;i<24;i++)uv.setX(i,(BLOCKS[id].tiles[1]+.015+uv.getX(i)*.97)/ATLAS_TILES);
-        const mesh=new THREE.Mesh(geo,heldMat);mesh.position.set(((q[0]+q[3])/2-.5)*scale,.14+(q[1]+q[4])/2*scale,((q[2]+q[5])/2-.5)*scale);group.add(mesh);
-      }
-      holder.add(group);return;
+    if(BuildingIcons.supports(id)){
+      const model=BuildingIcons.create(id,tex),bounds=new THREE.Box3().setFromObject(model),height=bounds.max.y-bounds.min.y;
+      model.scale.setScalar(.36/Math.max(1,height));model.position.y=.14;holder.add(model);return;
     }
     const g = new THREE.BoxGeometry(0.32, 0.32, 0.32).translate(0, 0.3, 0), uv = g.attributes.uv; // 面顺序 +x -x +y -y +z -z
     for (let i = 0; i < 24; i++) uv.setX(i, (BLOCKS[id].tiles[i >> 2 === 2 ? 0 : i >> 2 === 3 ? 2 : 1] + 0.01 + uv.getX(i) * 0.98) / ATLAS_TILES);
@@ -1189,7 +1336,21 @@
     if(!isBlock(id))return icons[id]=ItemArt.icon(id,TOOLS[id],pack==='natural');
     const c = document.createElement('canvas'); c.width = c.height = 40;
     const g = c.getContext('2d');
-    if (isBlock(id)) g.drawImage(atlas, BLOCKS[id].tiles[1] * TS, 0, TS, TS, 0, 0, 40, 40);
+    if (id === 179) { // 篝火：图标画两根木柴加一团火
+      g.fillStyle = '#6e4420'; g.save(); g.translate(20, 30); g.rotate(0.35); g.fillRect(-15, -3, 30, 6); g.rotate(-0.7); g.fillRect(-15, -3, 30, 6); g.restore();
+      g.fillStyle = '#ff8a20'; g.beginPath(); g.moveTo(20, 4); g.quadraticCurveTo(32, 20, 20, 29); g.quadraticCurveTo(8, 20, 20, 4); g.fill();
+      g.fillStyle = '#ffe070'; g.beginPath(); g.moveTo(20, 13); g.quadraticCurveTo(26, 22, 20, 28); g.quadraticCurveTo(14, 22, 20, 13); g.fill();
+    }
+    else if (id === 66) { // 床：贴图只是一块红格子被面，看不出是床，图标单独画——木床架、白枕头、红被子
+      g.fillStyle = '#6e4420'; g.fillRect(3, 24, 34, 6); g.fillRect(3, 14, 4, 20); g.fillRect(33, 20, 4, 14);
+      g.fillStyle = '#f2ece0'; g.fillRect(7, 17, 9, 7); g.fillStyle = '#c8504c'; g.fillRect(16, 17, 17, 7); g.fillStyle = '#a83838'; g.fillRect(16, 17, 17, 2);
+    }
+    else if (Core.PLANTS[id]) { const P = Core.PLANTS[id], q = TS / 2; g.drawImage(atlas, P.tile * TS + P.qx * q, P.qy * q, q, q, 3, 3, 34, 34); } // 新植物：只画贴图里属于它的那一小块
+    else if (id >= 68 && id <= 70) { // 红黄蓝三种花共用一张白花贴图，图标上把花朵那半截染成各自的颜色
+      g.drawImage(atlas, BLOCKS[id].tiles[1] * TS, 0, TS, TS, 0, 0, 40, 40);
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = ['#ff4d4dd0', '#ffd940d0', '#668cffd0'][id - 68]; g.fillRect(0, 0, 40, 20); g.globalCompositeOperation = 'source-over';
+    }
+    else if (isBlock(id)) g.drawImage(atlas, BLOCKS[id].tiles[id === Core.FARMLAND ? 0 : 1] * TS, 0, TS, TS, 0, 0, 40, 40);
     else {
       const tool = id < 31 || id === 153, S = tool ? 44 : 58; // 工具斜着放；兽皮和装备正着放、画大些
       g.translate(20, 20); if (tool) g.rotate(Math.PI / 4); g.lineJoin = 'round';
@@ -1227,7 +1388,7 @@
   }
   function renderBag() { // 左：角色装备和属性；中：27 格背包 + 快捷栏；右：合成
     const ids = Object.keys(inv).map(Number).filter(id => inv[id] > 0);
-    $('grid').innerHTML = Array.from({ length: Math.max(27, Math.ceil(ids.length / 9) * 9) }, (_, i) => cell(ids[i] || 0, '')).join('');
+    $('grid').innerHTML = Array.from({ length: Math.max(45, Math.ceil(ids.length / 9) * 9) }, (_, i) => cell(ids[i] || 0, '')).join('');
     [...$('grid').children].forEach((d, i) => { if (ids[i]) d.onclick = () => useItem(ids[i]); });
     $('hot').innerHTML = slots.map((id, i) => cell(id, i + 1)).join(''); if(hotbarActive)$('hot').children[sel].classList.add('on');
     [...$('hot').children].forEach((d, i) => { d.onclick = () => select(i); });
@@ -1235,7 +1396,7 @@
     [...$('equip').children].forEach((d, k) => { const i = PART_ORDER[k]; d.onclick = () => { if (equip[i]) { const id = equip[i]; equip[i] = 0; give(id); renderHP(); renderBag(); } }; }); // 点一下脱下
     $('stats').innerHTML = `<b>HP</b> ${Math.ceil(hp)} / ${MAXHP}<br><b>Armor</b> ${armor()} (blocks ${armor() * 4}%)<br><b>Attack</b> ${DMG[selectedItem()] || 1}<br><b>Holding</b> ${itemName(selectedItem())}`;
     $('craft').innerHTML = RECIPES.map(([out, n, need], i) => {
-      const ok = Object.keys(need).every(id => (inv[id] || 0) >= need[id]) && !(out >= 20 && !isBlock(out) && (inv[out] || equip.includes(out))); // 工具和装备已有就不能再做；方块不限
+      const ok = Object.keys(need).every(id => (inv[id] || 0) >= need[id]) && !(out >= 20 && !isBlock(out) && ![264, 265, 266, 267].includes(out) && (inv[out] || equip.includes(out))); // 工具和装备已有就不能再做；方块、弹药和材料不限
       return `<button data-i="${i}" ${ok ? '' : 'disabled'}><img src="${icon(out)}">${itemName(out)}${n > 1 ? ' ×' + n : ''}<small>${Object.keys(need).map(id => itemName(+id) + '×' + need[id]).join(' + ')}</small></button>`;
     }).join('');
     for (const b of $('craft').children) b.onclick = () => {
@@ -1281,15 +1442,16 @@
   let editingSave=null;
   const goToSave=id=>{saveNow();const url=new URL(location.href);url.searchParams.set('save',id);location.href=url.href;};
   function showSaveForm(id=null){
+    if(id===null&&window.Avatar&&Avatar.wizard)return Avatar.wizard(saveLibrary.list().length>0); // 新建世界走 avatar.js 的三步流程：选角色 → 起名 → Play
     editingSave=id;$('saveForm').hidden=false;$('saveError').textContent='';
     $('saveNameLabel').textContent=id?'Rename world':saveLibrary.list().length?'Name your world':'Name your first world';
-    $('saveName').value=id?saveLibrary.read(id).name||`World ${id}`:'';
+    $('saveName').value=id?saveLibrary.read(id).name||`World ${id}`:'My island'; // 新世界先给个名字，不想打字直接点 Create
     $('saveSubmit').textContent=id?'Save name':'Create world';$('saveCancel').hidden=!saveLibrary.list().length;
-    $('saveName').focus();
+    if(!matchMedia('(pointer:coarse)').matches){$('saveName').focus();$('saveName').select();} // 触屏上不自动弹键盘
   }
   function renderSaveCards(){
     const worlds=saveLibrary.list();$('saveCards').replaceChildren();$('newSave').hidden=materialPreview||!worlds.length;
-    $('start').disabled=!materialPreview&&!worlds.some(w=>w.id===selectedSave);
+    $('start').disabled=!materialPreview&&!worlds.some(w=>w.id===selectedSave);$('start').hidden=!materialPreview&&!worlds.length; // 还没有世界时不显示点不了的 Play
     $('saveIntro').textContent=materialPreview?'Temporary preview · Not saved':worlds.length?'Choose your world.':'Your adventure starts with a name.';
     if(materialPreview){$('newSave').hidden=true;return;}
     for(const world of worlds){
@@ -1398,7 +1560,7 @@
     if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
   });
   addEventListener('keyup', e => { keys[e.code] = false; });
-  addEventListener('wheel', e => { if (playing&&e.deltaY) select(sel + Math.sign(e.deltaY),false); }, { passive: true });
+  addEventListener('wheel', e => { if (playing&&!bagOpen&&!settingsOpen&&e.deltaY) select(sel + Math.sign(e.deltaY),false); }, { passive: true });
   addEventListener('resize', () => {resize();if(mobileControls.mobile && innerHeight>innerWidth && playing)setPlaying(false);});
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); else { last = 0; schedule(); } });
 
@@ -1463,11 +1625,21 @@
       const a=poses[k],b=poses[k+1],u=(phase-a[0])/(b[0]-a[0]),ease=u*u*(3-2*u),at=i=>a[i]+(b[i]-a[i])*ease;
       holder.position.set(handX+at(1),-.43+at(2),-1+at(3));
       holder.rotation.set(at(4),HELD_YAW[heldId]||-.9,at(5));
+    }else if(window.Ranged&&Ranged.WEAPONS[heldId]){
+      // 弓、弩、枪：平端着朝前瞄准；射出去的一瞬间往后一顿、枪口微微上抬，然后回到原位。不是挥砍。
+      const kick=swing>0?Math.sin((1-swing/.3)*Math.PI):0,bow=heldId===261,W=Ranged.WEAPONS[heldId];
+      const ready=1-Math.max(0,Math.min(1,attackCooldown/W.cd));                     // 0 = 刚射完，1 = 又准备好了（弓：重新拉满）
+      const hx=handX-(bow?.12:.04),hy=-.43+(bow?.17:.06);
+      holder.position.set(hx,hy+kick*.015,-1+kick*.07+(bow?(ready-1)*.04:0));
+      // 武器从右下角指向准星：按它所在的位置算出往里、往上各偏多少，射出去的那条线正好穿过画面中心前方 3 格处
+      holder.rotation.set(Math.atan2(-hy,3)+kick*.1,HELD_YAW[heldId]+Math.atan2(hx,3),bow?-.3:0);
+      if(bow&&holder.children[1])Ranged.draw(holder.children[1],ready);               // 弓：射完弦弹直，冷却里搭箭、拉弦，拉满了才能再射
     }else{
       holder.rotation.set(-0.25 - Math.sin(swing / 0.3 * Math.PI) * 0.9, HELD_YAW[heldId] || -0.9, heldId === PICK || heldId === PICK2 ? 0.08 : 0.12);
     }
     HandMotion.update(heldHand,holder,swing>0?1-swing/.3:0,swordHeld);
     FirstPersonHand.update(heldHand,holder); // 前臂每帧从手腕指向固定的手肘位置
+    if(window.Ranged)Ranged.offhand(holder,hotbarActive&&!(window.ThirdPerson&&ThirdPerson.on)?heldId:0,attackCooldown); // 弓、弩、枪：画出另一只手（双手持握）
     if (holder.children.length && !(window.ThirdPerson && ThirdPerson.on)) { renderer.autoClear = false; renderer.clearDepth(); renderer.render(handScene, handCam); renderer.autoClear = true; }
     frames++;
     if (t - fpsT > 500) {
@@ -1500,8 +1672,18 @@
     }
     document.body.appendChild(controls);
   }
+  if(artReview){
+    const review=document.createElement('div');review.style.cssText='position:fixed;left:12px;top:12px;z-index:8;max-width:96vw;padding:10px;background:#352b20e8;border:1px solid #9a805a;border-radius:8px;display:flex;gap:8px;flex-wrap:wrap';
+    window.refreshArtReview=()=>{review.replaceChildren();for(const [name,ids] of [['Home',[60,184,188,192,64,66,76,196,197,198,74,59,96,97]],['Garden',[77,78,79,87,88,89,98,99]],['Supplies',[100,101,102,103,104,105,106,107,108,109]],['Food & materials',[30,32,112,115,31,37,132,136,137,114]]]){const section=document.createElement('div');section.innerHTML='<div style="color:#cfbb97;font:12px system-ui;margin-bottom:4px">'+name+'</div>';for(const id of ids){const img=document.createElement('img');img.src=icon(id);img.alt=Lang.item(id);img.title=Lang.item(id);img.style.cssText='width:42px;height:42px;background:#1d1b17;border-radius:6px;margin:2px';section.append(img);}review.append(section);}};
+    document.body.append(review);refreshArtReview();
+  }
+  if(rangedReview){
+    const panel=document.createElement('div');panel.style.cssText='position:fixed;top:120px;left:12px;display:flex;gap:8px;background:#241f1bcc;padding:10px;border-radius:12px;z-index:8;pointer-events:none';document.body.append(panel);
+    const prior=window.refreshArtReview;
+    window.refreshArtReview=()=>{prior?.();panel.replaceChildren();for(const id of [261,262,263,264,265,266,267]){const img=document.createElement('img');img.alt=Lang.item(id);img.title=Lang.item(id);img.src=icon(id);img.style.cssText='width:72px;height:72px;background:#17181799;border-radius:8px';panel.append(img);}};
+  }
   setView(R); setHQ(hq); applyPack(); renderHP(); resize();
-  window.game = { get naturalItems(){return pack==='natural';}, debug: { frame, spawnFoe, spawnMob, spawnAt, spawnDrifter, FOES, WOLF }, mobState, mobSync, mobHit, takeLoot, slow() { slowMe(); }, push(x, z) { pushMe(x, z); }, get low() { return hp < MAXHP / 2; }, get cloak() { return equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; }, get playing() { return playing; }, torches: placedTorches, get dead() { return dead; }, get swinging() { return swing > 0; }, get swingPhase() { return swing > 0 ? 1 - swing / 0.3 : 0; }, get air() { return !onGround; }, itemMesh(id) { // 给联机小人和形象预览用：手里拿的东西
+  window.game = { lookDir: () => lookDir(), eye: EYE, get naturalItems(){return pack==='natural';}, debug: { frame, spawnFoe, spawnMob, spawnAt, spawnDrifter, FOES, WOLF }, mobState, mobSync, mobHit, takeLoot, slow() { slowMe(); }, push(x, z) { pushMe(x, z); }, get low() { return hp < MAXHP / 2; }, get cloak() { return equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; }, get playing() { return playing; }, torches: placedTorches, get dead() { return dead; }, get swinging() { return swing > 0; }, get swingPhase() { return swing > 0 ? 1 - swing / 0.3 : 0; }, get air() { return !onGround; }, itemMesh(id) { // 给联机小人和形象预览用：手里拿的东西
       if (!id || (!isBlock(id) && !TOOLS[id])) return null;
       if (!isBlock(id)) return ItemArt.create(id,TOOLS[id],pack==='natural');
       const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ map: new THREE.TextureLoader().load(icon(id)) })); m.position.y = 0.3; return m; }, get held() { return selectedItem(); }, setBlock, give, renderBar, renderBag, icon, // debug：页面不渲染时也能手动驱动一帧、指定刷怪，供测试用

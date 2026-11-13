@@ -4,8 +4,26 @@
   const AIR = 0, MOSS = 1, DIRT = 2, STONE = 3, SAND = 4, WATER = 5, LOG = 6, LEAF = 7;
   const COAL = 11, IRON = 12, GOLD = 13, CRYSTAL = 14, SNOW = 15;
   const GLASS = 50, LAMP = 59;                    // 第一批建筑方块（PRD FR-019）用 50–59；20–49 留给工具和物品
-  const SHAPED = id => (id >= 160 && id <= 175) || (id >= 60 && id <= 75) || (id >= 184 && id <= 195) || (id >= 200 && id <= 243);      // 不是整格的方块：门、窗、床、花、浆果丛、树苗、告示牌（PRD FR-18/19），外形见 meshChunk 里的 shape()
-  const PASS = new Set([62, 63, 68, 69, 70, 71, 72, 73, 74, 75]); // 可以走过去的：打开的门、植物、告示牌
+  const SHAPED = id => id === 179 || PLANTS[id] !== undefined || (id >= 160 && id <= 175) || (id >= 60 && id <= 75) || (id >= 184 && id <= 195) || (id >= 200 && id <= 243) || (id >= 248 && id <= 255);      // 不是整格的方块：门、窗、床、花、浆果丛、树苗、告示牌（PRD FR-18/19），外形见 meshChunk 里的 shape()
+  // 新植物（farm.js 管种植和生长）：贴图 61、62 两格各切成四小块（qx、qy：第几列、第几行），一小块是一种花或一截茎叶。
+  // stem：下面绿茎的高度（借用花那一格贴图的下半截）；top：整株的高度，可以超过一格（向日葵）。
+  const PLANTS = {
+    77: { name: '玫瑰', tile: 61, qx: 0, qy: 0, stem: 0.45, top: 0.9 },
+    78: { name: '向日葵', tile: 61, qx: 1, qy: 0, stem: 0.8, top: 1.4 },
+    79: { name: '百合', tile: 61, qx: 0, qy: 1, stem: 0.45, top: 0.95 },
+    87: { name: '水仙', tile: 61, qx: 1, qy: 1, stem: 0.4, top: 0.85 },
+    88: { name: '油菜花', tile: 62, qx: 0, qy: 0, stem: 0, top: 0.95 },
+    89: { name: '竹子', tile: 62, qx: 1, qy: 0, stem: 0, top: 1 },
+    99: { name: '幼苗', tile: 62, qx: 0, qy: 1, stem: 0, top: 0.45 },
+    116: { name: '红蘑菇', tile: 69, qx: 0, qy: 0, stem: 0, top: 0.5 }, 117: { name: '棕蘑菇', tile: 69, qx: 1, qy: 0, stem: 0, top: 0.5 },
+    118: { name: '白蘑菇', tile: 69, qx: 0, qy: 1, stem: 0, top: 0.5 }, // 原来还有黄蘑菇（179），编号让给了篝火
+  };
+  const GRANITE = 154, MARBLE = 155, QUARTZ = 156, SLATE = 157, COBBLE = 158; // 更多天然岩石（贴图 64–68）
+  const PUMPKIN = 119, MELON = 143, CHERRY_LEAF = 144, APPLE_LEAF = 145, MANGO_LEAF = 152, MUSHROOMS = [116, 117, 118], CAMPFIRE = 179; // 南瓜、西瓜（整格方块）；樱花、苹果、芒果树的树冠
+  const BANANA_LEAF = 159, GRAPE_VINE = 176, LYCHEE_LEAF = 199; // 香蕉树、荔枝树的树冠，和长在草地上的葡萄藤
+  const SLIME = 183; // 粘液方块：史莱姆掉落，踩上去会弹起来（game.js）
+  const FARMLAND = 98, WILD_FLOWERS = [68, 69, 70, 77, 78, 79, 87, 88];
+  const PASS = new Set([62, 63, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 79, 87, 88, 89, 99, 116, 117, 118, 179]); // 可以走过去的：打开的门、植物、告示牌
   const see = id => id === LEAF || id === GLASS || SHAPED(id); // 看得穿的方块：不挡后面的面，也不算“头顶有遮挡”
   // id -> [顶面, 侧面, 底面] 在贴图集里的格子号
   const BLOCKS = [
@@ -33,6 +51,14 @@
     .forEach(([name, t], i) => { BLOCKS[60 + i] = { name, tiles: [t, t, t] }; });
   BLOCKS[74] = BLOCKS[75] = { name: '告示牌', tiles: [46, 46, 46] };   // 74 牌面朝南北，75 朝东西
   BLOCKS[76] = { name: '箱子', tiles: [45, 45, 45] };
+  for (const id in PLANTS) BLOCKS[id] = { name: PLANTS[id].name, tiles: [PLANTS[id].tile, PLANTS[id].tile, PLANTS[id].tile] };
+  [['花岗岩', 64], ['大理石', 65], ['石英石', 66], ['石板岩', 67], ['鹅卵石', 68]].forEach(([name, t], i) => { BLOCKS[GRANITE + i] = { name, tiles: [t, t, t] }; });
+  BLOCKS[CAMPFIRE] = { name: '篝火', tiles: [6, 6, 6] }; // 一圈石头围着两根交叉的木柴；点着以后的火苗是 farm.js 另外画的
+  BLOCKS[PUMPKIN] = { name: '南瓜', tiles: [71, 70, 71] }; BLOCKS[MELON] = { name: '西瓜', tiles: [73, 72, 73] };
+  BLOCKS[CHERRY_LEAF] = { name: '樱花', tiles: [74, 74, 74] }; BLOCKS[APPLE_LEAF] = { name: '苹果树叶', tiles: [75, 75, 75] }; BLOCKS[MANGO_LEAF] = { name: '芒果树叶', tiles: [76, 76, 76] };
+  BLOCKS[SLIME] = { name: '粘液方块', tiles: [77, 77, 77] };
+  BLOCKS[BANANA_LEAF] = { name: '香蕉树叶', tiles: [78, 78, 78] }; BLOCKS[GRAPE_VINE] = { name: '葡萄藤', tiles: [79, 79, 79] }; BLOCKS[LYCHEE_LEAF] = { name: '荔枝树叶', tiles: [80, 80, 80] };
+  BLOCKS[FARMLAND] = { name: '耕地', tiles: [63, 2, 2] }; // 顶面是翻过的土，侧面和底面是泥土
   BLOCKS[96] = { name: '荧光玻璃', tiles: [47, 47, 47] }; BLOCKS[97] = { name: '冰灯', tiles: [48, 48, 48] }; // 怪物掉落做的两种发亮的装饰方块（自己亮，不照亮周围）
   // 80–86 矿物与宝石（地下生成），90–95 不同颜色的建材（合成）
   const OBSIDIAN = 80, CALCITE = 81, AMETHYST = 82, DIAMOND = 83, RUBY = 84, EMERALD = 85, SAPPHIRE = 86;
@@ -46,12 +72,14 @@
     {name:'walnut',cn:'胡桃',log:181,plank:94,door:188,chest:197,bark:53,end:54,doorTile:55,chestTile:56},
     {name:'cedar',cn:'雪松',log:182,plank:95,door:192,chest:198,bark:57,end:58,doorTile:59,chestTile:60}
   ];
-  const doorBase=id=>id>=60&&id<=63?60:id>=184&&id<=195?id-(id-184)%4:0;
+  // 门：base+0 / +1 是关着的两个朝向，+2 / +3 是开着、门板靠低的一侧；248–255 是开着、门板靠高的一侧（每种木材两个，见 doorR）
+  const doorBase=id=>id>=60&&id<=63?60:id>=184&&id<=195?id-(id-184)%4:id>=248&&id<=255?WOODS[(id-248)>>1].door:0;
   const isChest=id=>WOODS.some(w=>w.chest===id);
   WOODS.forEach((w,i)=>{
     BLOCKS[w.log]={name:w.cn+'原木',tiles:[w.end,w.bark,w.end]};
     for(let k=0;k<4;k++)BLOCKS[w.door+k]={name:w.cn+'门',tiles:[w.doorTile,w.doorTile,w.doorTile]};
     PASS.add(w.door+2);PASS.add(w.door+3);
+    w.doorR=248+i*2;for(let k=0;k<2;k++){BLOCKS[w.doorR+k]={name:w.cn+'门',tiles:[w.doorTile,w.doorTile,w.doorTile]};PASS.add(w.doorR+k);}
     BLOCKS[w.chest]={name:w.cn+'箱子',tiles:[BLOCKS[w.plank].tiles[0],w.chestTile,BLOCKS[w.plank].tiles[0]]};
     w.ladder=160+i*4;for(let k=0;k<4;k++){BLOCKS[w.ladder+k]={name:w.cn+'爬梯',tiles:[...BLOCKS[w.plank].tiles]};PASS.add(w.ladder+k);}
     w.stairs=200+i*4;w.slab=216+i;w.fence=220+i;w.inverted=224+i*4;w.upperSlab=240+i;w.doubleSlab=244+i;
@@ -94,7 +122,7 @@
     return [[0,0,0,1,1,1]];
   }
   const CAVE = 0.075;       // 洞穴粗细
-  const ATLAS_TILES = 64; // 贴图集一行 64 格
+  const ATLAS_TILES = 96; // 贴图集一行 96 格（原来 64 格用满了；标准包宽 6144 像素，精细包 12288）
 
   // ---- 噪声 / 地形 ----
   function hash(x, z, s) {
@@ -128,14 +156,41 @@
     return Math.min(H - 6, Math.floor(10 + n * 34 + r * r * 260));
   }
   // 群系：0 草原 / 1 沙漠 / 2 雪原
-  function biomeAt(x, z) { const t = vnoise(x / 140, z / 140, 11); return t > 0.62 ? 1 : t < 0.38 ? 2 : 0; }
+  // ---- 生成规则的版本 ----
+  // 以后每次升级都可能加新物种，但不能让新长出来的树、花、石头钻进玩家已经盖好的房子里。三条规矩：
+  //   1. 地形（高低、水、草原/沙漠/雪原、洞）和村庄永远不变。新版本只能改“地表上长什么、岩层是哪种石头”。
+  //   2. 新手村周围（出生点 HOME_R 格内的区块）永远用第 1 版规则：新玩家看到的环境固定，老玩家的家也不会变。
+  //   3. 别处的区块，玩家第一次动它的时候把当时的版本记下来（World.set），以后一直按那个版本生成；没动过的区块用最新版。
+  //      版本记在这个区块的改动表里：edits[区块].g = 'v2'（带个 v，免得被当成方块编号）。存档和联机都带着改动表走，不用另外传。
+  // 加新物种的做法：GEN 加 1，新规则写在 `v >= 新版本号` 的分支里；旧分支一个字都不要改。
+  const GEN = 2, HOME = [36, 8], HOME_R = 128;
+  const homeChunk = (cx, cz) => Math.hypot(cx * 16 + 8 - HOME[0], cz * 16 + 8 - HOME[1]) < HOME_R;
+  // ---- 南北气候（第 2 版起）----
+  // z 是“纬度”：z 越小越靠北、越冷，z 越大越靠南、越热。出生点（z≈8）在中部。分界线大约在 z = ±160（最近 ±110、最远 ±215），被噪声弄得弯弯曲曲，不是一条直线。
+  //   北方（0）：苹果树、樱花树；水仙、百合、蓝花；蘑菇多；南瓜
+  //   中部（1）：草原为主；玫瑰、油菜花、红花黄花、向日葵；葡萄藤；南瓜和西瓜；少量果树和竹子
+  //   南方（2）：芒果树、香蕉树、荔枝树；海滩上的大王椰子；成片的竹林（熊猫跟着竹子走）；向日葵；西瓜
+  function climateAt(x, z) { const t = z / 360 + (vnoise(x / 90, z / 90, 12) - 0.5) * 0.3; return t < -0.45 ? 0 : t > 0.45 ? 2 : 1; }
+  function biomeAt(x, z) { const t = vnoise(x / 140, z / 140, 11); return t > 0.62 ? 1 : t < 0.38 ? 2 : 0; } // 群系不跟气候带走：地形和村庄的位置永远不随版本变
+  const ZONE_FLOWERS = [[87, 79, 70, 69], [77, 88, 68, 69, 78], [78, 78, 68, 79]];                     // 各带的野花
+  const ZONE_CROWNS = [[[0.08, 145], [0.14, 144]], [[0.03, 145], [0.07, 144], [0.09, 152]], [[0.09, 152], [0.17, 159], [0.23, 199]]]; // 各带的果树：[累计比例, 树冠方块]。145 苹果 144 樱花 152 芒果 159 香蕉 199 荔枝
   function surfaceAt(x, z, h) {
     if (h <= SEA + 1) return SAND;       // 海滩
     if (h > 52) return SNOW;             // 雪线
     if (h > 44) return STONE;            // 裸岩山体
     return [MOSS, SAND, SNOW][biomeAt(x, z)];
   }
-  function oreAt(x, y, z) { // 岩层里的矿：2×2×2 的小团，越稀有埋得越深
+  // 岩层本身也分种类：大片的花岗岩和石板岩，窄一些的大理石带，深处偶尔有石英脉；其余是普通岩石。裸露的山体表面也照这个来
+  function rockAt(x, y, z) {
+    const a = vnoise3(x / 15, y / 7, z / 15, 51);
+    if (a > 0.78) return GRANITE;
+    if (a < 0.22) return SLATE;
+    if (vnoise3(x / 11, y / 6, z / 11, 52) > 0.84) return MARBLE;
+    if (y < 36 && vnoise3(x / 7, y / 4, z / 7, 53) > 0.88) return QUARTZ;
+    return STONE;
+  }
+  function oreAt(x, y, z, v = GEN) { // 岩层里的矿：2×2×2 的小团，越稀有埋得越深
+    const rock = v >= 2 ? rockAt(x, y, z) : STONE; // 第 1 版只有普通岩石
     if (y <= 4 && vnoise3(x / 6, y / 3, z / 6, 41) > 0.74) return OBSIDIAN;       // 最深处成片的黑曜石
     // 晶洞：每个 16³ 的格子里最多一个，球心在格子中部。外壳方解石、内层紫水晶、中间空心
     const gx = x >> 4, gy = y >> 4, gz = z >> 4;
@@ -145,21 +200,21 @@
       if (cy > 8 && cy < 34 && d < 3.7) return d < 1.6 ? AIR : d < 2.7 ? AMETHYST : CALCITE;
     }
     if (y < 44 && vnoise3(x / 9, y / 5, z / 9, 47) > 0.86) return CALCITE;       // 方解石矿脉：白色的岩带
-    if (hash(x + y * 8191, z, 22) < 0.25) return STONE;               // 啃掉一些边角，矿团不那么方
+    if (hash(x + y * 8191, z, 22) < 0.25) return rock;               // 啃掉一些边角，矿团不那么方
     const c = hash((x >> 1) + (y >> 1) * 8191, z >> 1, 21);
     if (c < 0.03) return COAL;
-    if (c < 0.05) return y < 30 ? IRON : STONE;
-    if (c < 0.058) return y < 18 ? GOLD : STONE;
-    if (c < 0.063) return y < 12 ? CRYSTAL : STONE;
-    if (c < 0.066) return y < 10 ? DIAMOND : STONE;                   // 钻石最深
-    if (c < 0.074) return y < 24 ? [EMERALD, RUBY, SAPPHIRE][biomeAt(x, z)] : STONE; // 宝石跟着群系：草原绿宝石、沙漠红宝石、雪原蓝宝石
-    return STONE;
+    if (c < 0.05) return y < 30 ? IRON : rock;
+    if (c < 0.058) return y < 18 ? GOLD : rock;
+    if (c < 0.063) return y < 12 ? CRYSTAL : rock;
+    if (c < 0.066) return y < 10 ? DIAMOND : rock;                   // 钻石最深
+    if (c < 0.074) return y < 24 ? [EMERALD, RUBY, SAPPHIRE][biomeAt(x, z)] : rock; // 宝石跟着群系：草原绿宝石、沙漠红宝石、雪原蓝宝石
+    return rock;
   }
   // 0 无 / 1 阔叶树（草原）/ 2 松树（雪原）/ 3 枯木桩（沙漠）
   function treeAt(x, z) {
     const r = hash(x, z, 9); if (r >= 0.012) return 0;
     const top = surfaceAt(x, z, heightAt(x, z)), b = biomeAt(x, z);
-    return top === MOSS ? 1 : top === SNOW && b === 2 && r < 0.008 ? 2 : top === SAND && b === 1 && r < 0.004 ? 3 : 0;
+    return top === MOSS ? 1 : top === SNOW && b === 2 && r < 0.008 ? 2 : top === SAND && b === 1 && r < 0.004 ? 3 : top === SAND && b !== 1 && r < 0.009 && climateAt(x, z) === 2 && heightAt(x, z) <= SEA + 3 && heightAt(x, z) > SEA ? 4 : 0; // 4：南方海滩上的大王椰子
   }
 
   // ---- 村庄和城镇：稀少的现成建筑 ----
@@ -246,7 +301,8 @@
     }
   }
 
-  function genChunk(cx, cz) {
+  function genChunk(cx, cz, gen = GEN) {
+    const v = homeChunk(cx, cz) ? 1 : gen; // 这个区块按哪一版规则生成
     const d = new Uint8Array(CH * CH * H), x0 = cx * CH, z0 = cz * CH;
     const put = (x, y, z, id, onlyAir) => {
       if (x < 0 || x >= CH || z < 0 || z >= CH || y < 0 || y >= H) return;
@@ -260,30 +316,36 @@
       const roof = h <= SEA + 4 ? h - 5 : h; // 洞可以开口到地表，但水边/水下留 5 格厚的壳，免得洞壁贴着不会流动的水
       for (let y = 0; y <= h; y++) {
         if (y <= roof && caveAt(wx, y, wz)) continue;
-        put(x, y, z, y < h - 3 || top === STONE ? oreAt(wx, y, wz) : y < h ? sub : top); // 裸岩山体表面也露矿
+        put(x, y, z, y < h - 3 || top === STONE ? oreAt(wx, y, wz, v) : y < h ? sub : v >= 2 && top === SAND && h <= SEA + 1 && vnoise3(wx / 7, 0, wz / 7, 90) > 0.7 ? COBBLE : top); // 水边和浅水底的沙地上，成片的鹅卵石滩（一片大约 5–10 格宽） // 裸岩山体表面也露矿
       }
       for (let y = h + 1; y <= SEA; y++) put(x, y, z, WATER);
       if (top === MOSS && d[x + z * CH + h * CH * CH] === MOSS) { // 草原的草地上：每个区块花不超过 6 朵、浆果丛不超过 2 丛
-        const r = hash(wx, wz, 77);
+        const r = hash(wx, wz, 77), zone = climateAt(wx, wz);
         if (r < 0.006 && bushes < 2) { bushes++; put(x, h + 1, z, 71); }
-        else if (r > 0.97 && flowers < 6) { flowers++; put(x, h + 1, z, 68 + Math.floor(hash(wx, wz, 78) * 3)); }
+        else if (v < 2) { if (r > 0.97 && flowers < 6) { flowers++; put(x, h + 1, z, 68 + Math.floor(hash(wx, wz, 78) * 3)); } } // 第 1 版：只有红黄蓝三种花
+        else if (r > 0.97 && flowers < 6) { flowers++; const F = ZONE_FLOWERS[zone]; put(x, h + 1, z, F[Math.floor(hash(wx, wz, 78) * F.length)]); }
+        else if (r > 0.02 && r < (zone === 0 ? 0.03 : zone === 1 ? 0.024 : 0.02)) put(x, h + 1, z, MUSHROOMS[Math.floor(hash(wx, wz, 82) * MUSHROOMS.length)]); // 蘑菇：北方多，中部少，南方没有
+        else if (r > 0.03 && r < 0.033) { const melon = zone === 2 || (zone === 1 && r > 0.0315); put(x, h + 1, z, melon ? MELON : PUMPKIN); }      // 南瓜在北方和中部，西瓜在中部和南方
+        else if (zone === 1 && r > 0.035 && r < 0.038) { put(x, h + 1, z, GRAPE_VINE); if (hash(wx, wz, 83) < 0.5) put(x, h + 2, z, GRAPE_VINE); } // 葡萄藤：中部草地上一两格高的一丛
+        else if (zone && r > 0.9 && hash(wx >> 3, wz >> 3, 79) < (zone === 2 ? 0.14 : 0.02)) { const n = 3 + Math.floor(hash(wx, wz, 80) * 4); for (let k = 1; k <= n; k++) put(x, h + k, z, 89); } // 竹丛：南方成片，中部偶尔有，北方没有
       }
     }
     // 树可能跨区块：扫描外扩 6 格内的树（枝最远伸出 4 格，枝头的树冠再 2 格），只写落在本区块的部分
     for (let z = -6; z < CH + 6; z++) for (let x = -6; x < CH + 6; x++) {
       const wx = x0 + x, wz = z0 + z, kind = treeAt(wx, wz);
-      if (!kind) continue;
+      if (!kind || (kind === 4 && v < 2)) continue; // 大王椰子是第 2 版加的
       if (inVillage(wx, wz)) continue; // 村子的广场上、房子周围 3 格内不长树
       const hh = heightAt(wx, wz);
       if (hh > SEA + 4 && caveAt(wx, hh, wz)) continue; // 脚下正好是洞口就不长树
       const base = hh + 1, log = woodLogAt(wx, wz), rnd = k => hash(wx, wz, k);
+      const sp = rnd(31), fruit = v >= 2 && kind === 1 && ZONE_CROWNS[climateAt(wx, wz)].find(c => sp < c[0]), crown = fruit ? fruit[1] : LEAF; // 阔叶树里一小部分是果树，种类看南北
       // 一团树冠：以 (cx, cy, cz) 为中心，下两层半径 r、上两层半径 r-1，四角随机缺一些
       const blob = (cx, cy, cz, r) => {
         for (let dy = -1; dy <= 2; dy++) {
           const rr = dy <= 0 ? r : r - 1; if (rr < 0) continue;
           for (let dz = -rr; dz <= rr; dz++) for (let dx = -rr; dx <= rr; dx++) {
             if (rr && Math.abs(dx) === rr && Math.abs(dz) === rr && hash(wx + cx + dx, wz + cz + dz, cy + dy) < 0.6) continue;
-            put(x + cx + dx, base + cy + dy, z + cz + dz, LEAF, true);
+            put(x + cx + dx, base + cy + dy, z + cz + dz, crown, true);
           }
         }
       };
@@ -319,6 +381,14 @@
         for (let dy = 0; dy < th; dy++) put(x, base + dy, z, log);
         continue;
       }
+      if (kind === 4) { // 大王椰子：又高又直的浅色树干（白桦原木），顶上一圈向外垂下去的大叶子
+        const th = 7 + Math.floor(rnd(10) * 3);
+        for (let dy = 0; dy < th; dy++) put(x, base + dy, z, 180);
+        put(x, base + th, z, LEAF, true);
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { put(x + dx, base + th, z + dz, LEAF, true); put(x + 2 * dx, base + th, z + 2 * dz, LEAF, true); put(x + 3 * dx, base + th - 1, z + 3 * dz, LEAF, true); }
+        for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { put(x + dx, base + th, z + dz, LEAF, true); put(x + 2 * dx, base + th - 1, z + 2 * dz, LEAF, true); }
+        continue;
+      }
       const th = kind === 3 ? 1 + Math.floor(rnd(10) * 2) : 5 + Math.floor(rnd(10) * 5); // 松树 5–9 格高，枯木桩 1–2 格
       for (let dy = 2; kind === 2 && dy <= th + 1; dy++) { // 松树：塔形，半径 2/1 交替收到尖
         const r = dy > th ? 0 : th - dy >= 2 && dy % 2 ? 2 : 1;
@@ -341,9 +411,9 @@
       const k = cx + ',' + cz;
       let d = this.chunks.get(k);
       if (!d) {
-        d = this.gen(cx, cz);
         const e = this.edits[k];
-        if (e) for (const i in e) d[i] = e[i];
+        d = this.gen(cx, cz, e ? (e.g ? +String(e.g).slice(1) : 1) : GEN); // 动过的区块按当时记下的版本生成（旧存档没记，就是第 1 版）；没动过的用最新版
+        if (e) for (const i in e) if (i !== 'g') d[i] = e[i];
         this.chunks.set(k, d);
       }
       return d;
@@ -357,7 +427,7 @@
       if (y < 0 || y >= H) return;
       const k = (x >> 4) + ',' + (z >> 4), i = (x & 15) + (z & 15) * CH + y * CH * CH;
       this.chunk(x >> 4, z >> 4)[i] = id;
-      (this.edits[k] || (this.edits[k] = {}))[i] = id;
+      (this.edits[k] || (this.edits[k] = { g: 'v' + GEN }))[i] = id; // 第一次动这个区块：记下它现在是按哪一版生成的
     }
   }
 
@@ -381,6 +451,89 @@
     });
   }
   const UV = [[0.01, 0.01], [0.99, 0.01], [0.99, 0.99], [0.01, 0.99]];
+
+  // Low relief made of real rounded stones, only on exposed cobblestone faces.
+  function cobbleFace(out,x,y,z,f,wx,wy,wz,light=1){
+    const o=f.c[0],u=f.c[1].map((v,i)=>v-o[i]),v=f.c[3].map((v,i)=>v-o[i]);
+    const target=out;out={pos:[],nor:[],uv:[],col:[],idx:[]};const coords=[];
+    const origin=[wx,wy,wz].map((q,i)=>q+o[i]);
+    const U=origin.reduce((s,q,i)=>s+q*u[i],0),V=origin.reduce((s,q,i)=>s+q*v[i],0);
+    const seed=origin.reduce((s,q,i)=>s+q*f.d[i],0)*131+FACES.indexOf(f)*977;
+    let stoneColor=[.85,.88,.91];
+    const vertex=(a,b,h,nu,nv,nn,tone,tu,tv)=>{
+      coords.push([a,b]);
+      const n=u.map((q,i)=>q*nu+v[i]*nv+f.d[i]*nn),len=Math.hypot(...n);
+      out.pos.push(...o.map((q,i)=>[x,y,z][i]+q+u[i]*a+v[i]*b+f.d[i]*h));
+      out.nor.push(...n.map(q=>q/len));out.uv.push((3+tu)/ATLAS_TILES,tv);
+      const shade=light*tone*(.73+.27*nn/len);
+      out.col.push(shade*stoneColor[0],shade*stoneColor[1],shade*stoneColor[2]);
+    };
+    // Recessed mineral bed closes all gaps and keeps the block watertight.
+    let base=out.pos.length/3;
+    for(const [a,b] of [[0,0],[1,0],[1,1],[0,1]])vertex(a,b,0,0,0,1,.62,.01+a*.98,.01+b*.98);
+    out.idx.push(base,base+1,base+2,base,base+2,base+3);
+    // Random sites partition the face into closely fitted stones, with no rows.
+    // Half-plane clipping keeps them non-overlapping and inside the block.
+    const sites=[],spacing=.35;
+    for(let gy=Math.floor(V/spacing)-2;gy<=Math.floor((V+1)/spacing)+2;gy++)for(let gx=Math.floor(U/spacing)-2;gx<=Math.floor((U+1)/spacing)+2;gx++){
+      sites.push([(gx+.12+hash(gx,gy,seed+41)*.76)*spacing-U,(gy+.12+hash(gx,gy,seed+42)*.76)*spacing-V,gx,gy]);
+    }
+    for(let k=0;k<sites.length;k++){
+      const site=sites[k];if(site[0]<-.5||site[0]>1.5||site[1]<-.5||site[1]>1.5)continue;
+      const stoneSeed=site[2]*7919+site[3]*104729;
+      let polygon=[[site[0]-.8,site[1]-.8],[site[0]+.8,site[1]-.8],[site[0]+.8,site[1]+.8],[site[0]-.8,site[1]+.8]];
+      for(let j=0;j<sites.length&&polygon.length;j++){
+        if(j===k)continue;
+        const other=sites[j],nx=other[0]-site[0],ny=other[1]-site[1];
+        const limit=(other[0]**2+other[1]**2-site[0]**2-site[1]**2)/2,next=[];
+        for(let i=0;i<polygon.length;i++){
+          const a=polygon[i],b=polygon[(i+1)%polygon.length],da=a[0]*nx+a[1]*ny-limit,db=b[0]*nx+b[1]*ny-limit;
+          if(da<=1e-10)next.push(a);
+          if((da<0)!==(db<0)){const t=da/(da-db);next.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}
+        }polygon=next;
+      }
+      if(polygon.length<3||polygon.every(p=>p[0]<0)||polygon.every(p=>p[0]>1)||polygon.every(p=>p[1]<0)||polygon.every(p=>p[1]>1))continue;
+      const cx=polygon.reduce((s,p)=>s+p[0],0)/polygon.length,cy=polygon.reduce((s,p)=>s+p[1],0)/polygon.length;
+      // Quadratic corner arcs and a curved dome mimic water-worn edges.
+      const rim=[];
+      for(let j=0;j<polygon.length;j++){
+        const a=polygon[j],prev=polygon[(j+polygon.length-1)%polygon.length],next=polygon[(j+1)%polygon.length];
+        const enter=a.map((q,i)=>q*.66+prev[i]*.34),exit=a.map((q,i)=>q*.66+next[i]*.34);
+        for(let step=0;step<=3;step++){const t=step/3;rim.push(a.map((q,i)=>(1-t)**2*enter[i]+2*t*(1-t)*q+t*t*exit[i]));}
+      }
+      const palette=[[.92,.98,1.06],[.79,.88,.98],[1.08,1.10,1.12],[.67,.71,.77],[1.02,.94,.83],[.88,.92,.94]];
+      stoneColor=palette[Math.floor(hash(seed,stoneSeed,49)*palette.length)];
+      const height=.025+hash(seed,stoneSeed,44)*.04,tone=.9+hash(seed,stoneSeed,45)*.20,N=rim.length;
+      base=out.pos.length/3;
+      const rings=[[.98,.002],[.88,height*.49],[.53,height*.86]];
+      for(const [r,h] of rings)for(const p of rim){
+        const dx=p[0]-cx,dy=p[1]-cy,d=Math.hypot(dx,dy)||1;
+        const slope=height*r/(d*Math.sqrt(1-r*r));
+        vertex(cx+dx*r,cy+dy*r,h,dx/d*slope,dy/d*slope,1,tone,.48+dx*r*.3,.52+dy*r*.3);
+      }
+      vertex(cx,cy,height,0,0,1,tone,.48,.52);
+      for(let j=0;j<N;j++){const n=(j+1)%N;
+        for(let r=0;r<2;r++){const a=base+r*N,b=a+N;out.idx.push(a+j,a+n,b+n,a+j,b+n,b+j);}
+        out.idx.push(base+3*N,base+2*N+j,base+2*N+n);
+      }
+    }
+    const read=i=>[...coords[i],...out.pos.slice(i*3,i*3+3),...out.nor.slice(i*3,i*3+3),...out.uv.slice(i*2,i*2+2),...out.col.slice(i*3,i*3+3)];
+    for(let t=0;t<out.idx.length;t+=3){
+      let poly=out.idx.slice(t,t+3).map(read);
+      for(const [axis,bound,sign] of [[0,0,-1],[0,1,1],[1,0,-1],[1,1,1]]){
+        const next=[];
+        for(let j=0;j<poly.length;j++){
+          const a=poly[j],b=poly[(j+1)%poly.length],da=(a[axis]-bound)*sign,db=(b[axis]-bound)*sign;
+          if(da<=0)next.push(a);
+          if((da<0)!==(db<0)){const f=da/(da-db);next.push(a.map((q,i)=>q+(b[i]-q)*f));}
+        }poly=next;
+      }
+      if(poly.length<3)continue;
+      const base=target.pos.length/3;
+      for(const p of poly){target.pos.push(...p.slice(2,5));target.nor.push(...p.slice(5,8));target.uv.push(...p.slice(8,10));target.col.push(...p.slice(10,13));}
+      for(let j=1;j<poly.length-1;j++)target.idx.push(base,base+j,base+j+1);
+    }
+  }
 
   function meshChunk(world, cx, cz) {
     const data = world.chunk(cx, cz), x0 = cx * CH, z0 = cz * CH;
@@ -412,11 +565,11 @@
         solid.idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
       }
     };
-    const cross = (x, y, z, tile, v0, v1, h0, h1, tint) => { // 两片交叉的竖面，正反都画：花草用
+    const cross = (x, y, z, tile, v0, v1, h0, h1, tint, ua = 0.01, ub = 0.99, width = 1) => { // ua、ub：只用这一格贴图横向的一段 // 两片交叉的竖面，正反都画：花草用
       for (const [ax, az, bx, bz] of [[0.12, 0.12, 0.88, 0.88], [0.12, 0.88, 0.88, 0.12]]) for (const flip of [0, 1]) {
-        const v = solid.pos.length / 3, A = flip ? [bx, bz] : [ax, az], B = flip ? [ax, az] : [bx, bz];
+        const v = solid.pos.length / 3, A = (flip ? [bx, bz] : [ax, az]).map(v=>.5+(v-.5)*width), B = (flip ? [ax, az] : [bx, bz]).map(v=>.5+(v-.5)*width);
         solid.pos.push(x + A[0], y + h0, z + A[1], x + B[0], y + h0, z + B[1], x + B[0], y + h1, z + B[1], x + A[0], y + h1, z + A[1]);
-        const u0 = (tile + (flip ? 0.99 : 0.01)) / ATLAS_TILES, u1 = (tile + (flip ? 0.01 : 0.99)) / ATLAS_TILES;
+        const u0 = (tile + (flip ? ub : ua)) / ATLAS_TILES, u1 = (tile + (flip ? ua : ub)) / ATLAS_TILES;
         solid.uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
         for (let i = 0; i < 4; i++) { solid.nor.push(0, 1, 0); solid.col.push(tint[0], tint[1], tint[2]); }
         solid.idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
@@ -425,7 +578,18 @@
     const PETAL = { 68: [1, 0.3, 0.3], 69: [1, 0.86, 0.25], 70: [0.4, 0.55, 1] }, PLAIN = [0.95, 0.95, 0.95];
     const shape = (b, x, y, z) => {
       if(b>=200&&b<=243||ladderInfo(b)){for(const q of shapeBoxes(b,at,x,y,z))slab(x+q[0],y+q[1],z+q[2],x+q[3],y+q[4],z+q[5],BLOCKS[b].tiles[1]);return;}
-      const doorTile=BLOCKS[b].tiles[1],base=doorBase(b),doorV=base&&doorBase(at(x,y-1,z))===base?.5:0;if(base)b=60+b-base;
+      if(b===CAMPFIRE){ // 篝火：四角四块石头，中间两根交叉的木柴
+        for(const [sx,sz] of [[.06,.06],[.72,.06],[.06,.72],[.72,.72]])slab(x+sx,y,z+sz,x+sx+.22,y+.16,z+sz+.22,3);
+        slab(x+.16,y,z+.4,x+.84,y+.2,z+.6,6);slab(x+.4,y+.04,z+.16,x+.6,y+.24,z+.84,6);return;
+      }
+      const plant=PLANTS[b];
+      if(plant){ // 新植物：下面一截绿茎，上面是贴图里的那一小块
+        if(plant.stem)cross(x,y,z,29,0.01,0.5,0,plant.stem,PLAIN);
+        cross(x,y,z,plant.tile,plant.qy?0.01:0.51,plant.qy?0.49:0.99,plant.stem,plant.top,PLAIN,plant.qx?0.51:0.01,plant.qx?0.99:0.49,plant.stem?(b===78?.85:.65):1);return;
+      }
+      const doorTile=BLOCKS[b].tiles[1],base=doorBase(b),doorV=base&&doorBase(at(x,y-1,z))===base?.5:0;
+      if(b>=248&&b<=255){if(b&1)slab(x, y, z + 0.84, x + 1, y + 1, z + 1, doorTile,doorV,doorV+.5);else slab(x + 0.84, y, z, x + 1, y + 1, z + 1, doorTile,doorV,doorV+.5);return;} // 门·开，门板靠另一侧
+      if(base)b=60+b-base;
       if (b === 60) slab(x, y, z + 0.42, x + 1, y + 1, z + 0.58, doorTile,doorV,doorV+.5);        // 门·关：门板在格子正中
       else if (b === 61) slab(x + 0.42, y, z, x + 0.58, y + 1, z + 1, doorTile,doorV,doorV+.5);
       else if (b === 62) slab(x, y, z, x + 0.16, y + 1, z + 1, doorTile,doorV,doorV+.5);          // 门·开：门板转到格子一侧
@@ -556,6 +720,10 @@
           const q = (x + f.d[0] - lx) ** 2 + (y + f.d[1] - ly) ** 2 + (z + f.d[2] - lz) ** 2;
           if (q <= 36) { cov = 1; glow = Math.max(glow, 1.25 - q / 144); }
         }
+        if(b===COBBLE){
+          cobbleFace(out,x,y,z,f,x0+x,y,z0+z,f.s*(world.lighting?1:cov)*glow);
+          continue;
+        }
         const top = b === WATER && at(x, y + 1, z) !== WATER ? 0.88 : 1; // 水面略低于方块顶
         for (let i = 0; i < 4; i++) {
           if (b !== WATER) {
@@ -567,8 +735,17 @@
           const surface=b===WATER&&world.water?world.water.corner(x0+x+f.c[i][0],y,z0+z+f.c[i][2]):top;
           out.pos.push(x + f.c[i][0], y + f.c[i][1] * surface, z + f.c[i][2]);
           out.nor.push(f.d[0], f.d[1], f.d[2]);
-          out.uv.push((tile + UV[i][0]) / ATLAS_TILES, UV[i][1]);
-          out.col.push(l, l * 0.98, l * (1.14 - 0.22 * l)); // 亮面偏暖、暗面偏冷
+          // World-coordinate seed: unchanged by chunk rebuilds or save/load.
+          let tu=UV[i][0],tv=UV[i][1],tone=1,warm=0;
+          if(b===COBBLE){
+            const seed=Math.floor(hash(x0+x,y*97+z0+z,1681)*8);
+            if(seed&4)tu=1-tu;
+            for(let r=0;r<(seed&3);r++)[tu,tv]=[tv,1-tu];
+            tone=.91+hash(x0+x,y*131+z0+z,1682)*.16;
+            warm=(hash(x0+x,y*173+z0+z,1683)-.5)*.07;
+          }
+          out.uv.push((tile + tu) / ATLAS_TILES, tv);
+          out.col.push(l*tone*(1+warm), l*.98*tone, l*(1.14-.22*l)*tone*(1-warm)); // 亮面偏暖、暗面偏冷
           if(b===WATER){out.flow.push(...(waterVisual?waterVisual.flow:[0,0,0,1]));out.foam.push(waterVisual?waterVisual.foam:0);}
         }
         // 沿 AO 更平滑的对角线切分
@@ -610,6 +787,7 @@
     return null;
   }
 
-  const Core = { villageIn, REGION, CH, H, SEA, AIR, WATER, STONE, GLASS, LAMP, PASS, see, WOODS, doorBase, isChest, woodLogAt, shapeBoxes, stairInfo, slabInfo, ladderInfo, ladderSupported, hash, biomeAt, caveAt, BLOCKS, ATLAS_TILES, heightAt, genChunk, World, meshChunk, raycast };
+  const cobbleModel=()=>{const out={pos:[],nor:[],uv:[],col:[],idx:[]};for(const f of FACES)cobbleFace(out,0,0,0,f,0,0,0,f.s);return out;};
+  const Core = { CAMPFIRE, cobbleModel, GEN, climateAt, SLIME, PLANTS, FARMLAND, villageIn, REGION, CH, H, SEA, AIR, WATER, STONE, GLASS, LAMP, PASS, see, WOODS, doorBase, isChest, woodLogAt, shapeBoxes, stairInfo, slabInfo, ladderInfo, ladderSupported, hash, biomeAt, caveAt, BLOCKS, ATLAS_TILES, heightAt, genChunk, World, meshChunk, raycast };
   if (typeof module !== 'undefined') module.exports = Core; else root.Core = Core;
 })(this);

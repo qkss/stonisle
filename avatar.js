@@ -100,7 +100,10 @@
     const arm = g.userData.swing[3]; if (g.userData.item) arm.remove(g.userData.item);
     g.userData.sword = [23, 26, 29, 153].includes(id); // 拿着剑：挥动是左右横扫，不是从上往下劈
     const item = g.userData.item = window.game && id ? game.itemMesh(id) : null; if (!item) return;
-    const grip = new THREE.Group(); grip.add(item); grip.rotation.x = g.userData.sword ? -2.3 : -1.9; grip.position.set(0, -0.66, -0.02); grip.scale.setScalar(0.9); // 工具从手里向前伸出去（不是顺着胳膊往回指）：手垂着时指向前下方，手向前举时指向前上方
+    g.userData.ranged = [261, 262, 263].includes(id);  // 弓、弩、枪：模型的 +z 是射出去的方向，要顺着胳膊指出去，握把朝下
+    const mounted = g.userData.ranged && window.Ranged ? Ranged.mount(item, id) : item; g.userData.aim = g.userData.ranged ? id : 0; g.userData.bowMount = id === 261 ? mounted : null;
+    const grip = new THREE.Group(); grip.add(mounted); grip.position.set(0, -0.66, -0.02); grip.scale.setScalar(0.9);
+    if (g.userData.ranged) { grip.rotation.order = 'YXZ'; grip.rotation.set(Math.PI / 2, Math.PI, 0); } else grip.rotation.x = g.userData.sword ? -2.3 : -1.9; // 远程武器：握把在手里，射出去的方向顺着胳膊，胳膊平举时正好朝前 // 工具从手里向前伸出去（不是顺着胳膊往回指）：手垂着时指向前下方，手向前举时指向前上方
     arm.add(g.userData.item = grip);
   }
   // 摆姿势。phase 动作的相位，walk 0–1 走路的幅度，swing 0–1 右手挥动的进度（0 = 没在挥），air 在空中，swim 在水里
@@ -108,7 +111,7 @@
     const [legL, legR, armL, armR] = g.userData.swing, s = Math.sin(phase) * 0.7 * walk, k = Math.sin(phase);
     g.rotation.order = 'YXZ'; g.rotation.x = 0;                                  // 踩水保持直立，与站立碰撞体一致，避免头部绕脚底旋进岸墙
     const u = g.userData; if (swing > 0 && !(swing >= (u.lastSw || 0) && u.lastSw > 0)) u.flip = !u.flip; u.lastSw = swing; // 每挥一下换一个方向：右到左、左到右交替
-    armR.rotation.order = 'YXZ'; armR.rotation.y = 0;
+    armR.rotation.order = 'YXZ'; armR.rotation.y = 0; armL.rotation.y = 0; // 端着远程武器时两臂会往里收，别的姿势要归零
     if (swim) { // 小幅蹬腿和划水，轮廓留在碰撞体附近
       legL.rotation.x = k * 0.16; legR.rotation.x = -k * 0.16;
       armL.rotation.x = -0.25 + k * 0.15; armL.rotation.z = 0;
@@ -117,6 +120,24 @@
     }
     legL.rotation.x = air ? -0.55 : s; legR.rotation.x = air ? 0.35 : -s;                       // 跳起：两腿一前一后收起
     armL.rotation.x = air ? 2.6 : -s; armL.rotation.z = air ? -0.25 : 0;                       // 跳起：双臂上举
+    if (u.ranged && !air) { // 远程武器：一直端着瞄准，不挥砍。三种姿势不一样
+      if (swing > 0 && !(u.shot > 0)) u.shotAt = performance.now(); u.shot = swing;                    // 刚射出去的那一刻
+      const since = (performance.now() - (u.shotAt || -1e9)) / 1000, kick = since < 0.25 ? Math.sin(since / 0.25 * Math.PI) : 0;
+      armL.rotation.order = 'YXZ';
+      if (u.aim === 261) { // 弓：右臂伸直举着弓，左手在弦上——射完手松开落下一点，再抬回去把弦拉到脸旁边
+        const k = Math.max(0, Math.min(1, since / 0.8)), e = k * k * (3 - 2 * k);
+        armR.rotation.x = 1.52; armR.rotation.y = 0.12; armR.rotation.z = 0;
+        armL.rotation.x = 1.5 - 0.5 * e; armL.rotation.y = -0.75 + 0.2 * e; armL.rotation.z = 0;
+        if (u.bowMount && window.Ranged) Ranged.draw(u.bowMount, k);
+      } else if (u.aim === 262) { // 弩：两只手一起端平，左手在前面托着；射出去往上一跳
+        armR.rotation.x = 1.42 + kick * 0.16; armR.rotation.y = 0.28; armR.rotation.z = 0;
+        armL.rotation.x = 1.36 + kick * 0.16; armL.rotation.y = -0.62; armL.rotation.z = 0;
+      } else { // 枪：右手举平瞄准，左手扶着右手腕；后坐更大
+        armR.rotation.x = 1.5 + kick * 0.3; armR.rotation.y = 0.2; armR.rotation.z = 0;
+        armL.rotation.x = 1.3 + kick * 0.24; armL.rotation.y = -0.78; armL.rotation.z = 0;
+      }
+      return;
+    }
     if (swing > 0 && u.sword) { // 横扫：手臂平举向前，从一侧扫到另一侧，中间略微下压
       const t = u.flip ? 1 - swing : swing;
       armR.rotation.x = 1.35 - Math.sin(swing * Math.PI) * 0.25; armR.rotation.y = -1.2 + t * 2.4; armR.rotation.z = 0; // 正的角度是向前抬（脸朝 -z）；之前写成负的，手臂是往身后抬的
@@ -166,21 +187,48 @@
   setInterval(paintHand, 500); paintHand();
   function changed() { localStorage.setItem(KEY, JSON.stringify(look)); renderRows(); draw(); paintHand(); renderHeroes(); icons(); if (window.Net && Net.look) Net.look(); }
   // —— 开局界面：存档那一行左边是这个世界的角色头像；只有新建世界时选一次角色（之后在设置 → Character 里改）——
-  const form = document.getElementById('saveForm'), heroBox = document.createElement('div');
-  heroBox.innerHTML = '<p style="margin:14px 0 8px">Your character</p><button type="button" id="heroNow" aria-expanded="false" style="display:flex;align-items:center;gap:12px;width:100%;padding:6px 12px;background:#ffffff14;border:1px solid #957a50;color:inherit;font:inherit;cursor:pointer;text-align:left"></button><div id="heroes" hidden style="grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px"></div>';
-  if (form) form.querySelector('.saveFormActions').before(heroBox);
-  let heroesOpen = false, ready = false, draft = { ...HEROES[0].look }, direct = false; // draft：正在新建的世界要用的角色；direct：联机访客没有存档，直接改自己的形象
+  // 新建世界分三步，每一步独占开始卡片，不和存档列表挤在一起：选角色（男 / 女 / 男孩 / 女孩四组）→ 起名字（点头像可以回去重选）→ Play。
+  const card = document.getElementById('launchCard'), form = document.getElementById('saveForm'), $id = i => document.getElementById(i);
+  const GROUPS = [['Men', 0], ['Women', 3], ['Boys', 6], ['Girls', 9]]; // HEROES 里每组 3 个，按这个顺序排
+  document.head.appendChild(document.createElement('style')).textContent = `
+    #launchCard.wiz > :not(.wizPage) { display: none !important; }
+    .wizPage { display: none; } #launchCard.wiz > .wizPage.on { display: block; }
+    .wizPage h2 { margin: 0 0 12px; font: 600 20px Georgia, serif; color: #efd6a0; }
+    .heroGroups { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+    .heroGroups h3 { margin: 0 0 4px; font-size: 12px; font-weight: normal; letter-spacing: 1px; color: #a8957c; }
+    .heroGroups section > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .heroGroups section, .heroGroups button { min-width: 0; }
+    .heroGroups button { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 4px 2px; background: #ffffff14; border: 2px solid #0000; border-radius: 4px; color: inherit; font-size: 12px; cursor: pointer; }
+    .heroGroups button[aria-pressed=true] { background: #ffd36b2e; border-color: #ffd36b; }
+    .heroGroups img { width: 100%; max-height: min(84px, 16vh); aspect-ratio: 4/5; object-fit: contain; }
+    .wizActions { display: flex; gap: 8px; margin-top: 14px; }
+    .wizActions button { margin: 0; padding: 12px 18px; font: inherit; border-radius: 4px; cursor: pointer; background: transparent; border: 1px solid #957a50; color: #d0b782; }
+    .wizActions .go { flex: 1; font-weight: bold; letter-spacing: 1px; background: linear-gradient(#657447,#455333); color: #fff1d1; border-color: #b3ab72; }
+    .heroFace { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; padding: 6px 12px; background: #ffffff14; border: 1px solid #957a50; border-radius: 4px; color: inherit; font: inherit; cursor: pointer; }
+    .heroFace img { height: min(96px, 22vh); aspect-ratio: 4/5; object-fit: contain; } .heroFace small { color: #d0b782; font-size: 11px; }
+    #launchCard > .heroFace { flex-direction: row; gap: 12px; width: 100%; margin-top: 14px; } #launchCard > .heroFace img { height: 64px; } #launchCard > .heroFace b { flex: 1; text-align: left; }
+    #wizName { width: 100%; box-sizing: border-box; font: inherit; padding: 11px; border: 1px solid #957a50; border-radius: 4px; background: #211b16; color: #f6e6c7; }
+    @media (max-height: 540px) { .wizPage h2 { margin-bottom: 6px; font-size: 18px; } .heroGroups { gap: 4px 18px; } .heroGroups img { max-height: 12vh; } .heroGroups button { padding: 2px; } .wizActions { margin-top: 8px; } .wizActions button { padding: 9px 18px; } } /* 横屏手机：一屏放下，不用滚 */
+    #wizError { min-height: 1em; margin: 6px 0 0; color: #ffb4a0; font-size: 12px; }`;
+  if (card) card.insertAdjacentHTML('beforeend', `
+    <div class="wizPage" id="heroPage"><h2>Choose your character</h2><div class="heroGroups" id="heroGroups"></div>
+      <div class="wizActions"><button type="button" id="heroBack">Cancel</button><button type="button" id="heroNext" class="go">Next</button></div></div>
+    <div class="wizPage" id="namePage"><h2>Name your world</h2>
+      <div style="display:flex;gap:16px;align-items:center"><button type="button" class="heroFace" id="heroFace" aria-label="Change character"></button>
+        <div style="flex:1;min-width:0"><input id="wizName" maxlength="32" autocomplete="off" aria-label="World name"><p id="wizError" role="alert"></p></div></div>
+      <div class="wizActions"><button type="button" id="nameBack">Back</button><button type="button" id="wizPlay" class="go">Play</button></div></div>`);
+  let canCancel = false, ready = false, draft = { ...HEROES[0].look }, direct = false; // draft：正在新建的世界要用的角色；direct：联机访客没有存档，直接改自己的形象
   const shots = {}; let studio = null;
-  function portrait(lk) { // 一张全身头像；用一个常驻的小画布画，画过的记下来
+  function portrait(lk, gear = [], held = 0) { // 一张全身像；用一个常驻的小画布画，画过的记下来。gear、held：身上的装备和手里的东西（背包里的形象预览用）
     if (!ready) return '';
-    const k = JSON.stringify(clean(lk)); if (shots[k]) return shots[k];
+    const k = JSON.stringify(clean(lk)) + '|' + gear.join() + '|' + held; if (shots[k]) return shots[k];
     if (!studio) {
       const c = document.createElement('canvas'); c.width = 160; c.height = 200;
       const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true, preserveDrawingBuffer: true }), sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 0.8, 0.1, 20);
       cam.position.set(1.3, 1.5, -3.9); cam.lookAt(0, 1.02, 0); sc.add(new THREE.AmbientLight(0xffffff, 0.8)); const sun = new THREE.DirectionalLight(0xfff2d8, 0.6); sun.position.set(1, 2, -2); sc.add(sun);
       studio = { c, r, sc, cam };
     }
-    const m = build(lk); studio.sc.add(m); studio.r.render(studio.sc, studio.cam); studio.sc.remove(m);
+    const m = build(lk, gear); if (held) hold(m, held); studio.sc.add(m); studio.r.render(studio.sc, studio.cam); studio.sc.remove(m);
     return shots[k] = studio.c.toDataURL();
   }
   function icon(el) { // game.js 画存档卡片时调用：把方块图标换成这个世界的角色
@@ -188,16 +236,37 @@
     el.style.cssText = 'width:44px;height:55px;font-size:0'; el.innerHTML = `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:contain">`;
   }
   const icons = () => document.querySelectorAll('.worldIcon[data-save]').forEach(icon);
+  const show = page => { card.classList.toggle('wiz', !!page); for (const pg of card.querySelectorAll('.wizPage')) pg.classList.toggle('on', pg.id === page); card.scrollTop = 0; renderHeroes(); };
   function renderHeroes() {
-    const list = document.getElementById('heroes'); if (!list) return;
-    const shown = direct ? look : draft, now = JSON.stringify(clean(shown)), cur = HEROES.findIndex(h => JSON.stringify(clean(h.look)) === now), btn = document.getElementById('heroNow'), pic = portrait(shown);
-    btn.innerHTML = (pic ? `<img src="${pic}" alt="" style="height:64px;aspect-ratio:4/5;object-fit:contain">` : '') + `<b style="flex:1">${cur < 0 ? 'Custom' : HEROES[cur].name}</b><small>${heroesOpen ? 'Close ▴' : 'Change ▾'}</small>`; // 在设置里自己搭的形象不在名单里，叫 Custom
-    btn.setAttribute('aria-expanded', heroesOpen); btn.onclick = () => { heroesOpen = !heroesOpen; renderHeroes(); };
-    list.hidden = !heroesOpen; list.style.display = heroesOpen ? 'grid' : 'none';
-    list.innerHTML = HEROES.map((h, i) => { const sel = JSON.stringify(clean(h.look)) === now, p = portrait(h.look); return `<button type="button" data-i="${i}" aria-pressed="${sel}" style="display:flex;flex-direction:column;align-items:center;padding:4px 2px;background:${sel ? '#ffd36b2e' : '#ffffff14'};border:2px solid ${sel ? '#ffd36b' : '#0000'};color:inherit;font-size:12px;cursor:pointer">${p ? `<img src="${p}" alt="" style="width:100%;max-width:64px;aspect-ratio:4/5;object-fit:contain">` : ''}${h.name}</button>`; }).join('');
-    for (const b of list.children) b.onclick = () => { heroesOpen = false; if (direct) { look = { ...HEROES[b.dataset.i].look }; changed(); } else { draft = { ...HEROES[b.dataset.i].look }; renderHeroes(); } }; /* 选好就收起 */
+    if (!card) return;
+    const shown = direct ? look : draft, now = JSON.stringify(clean(shown)), cur = HEROES.findIndex(h => JSON.stringify(clean(h.look)) === now), pic = portrait(shown);
+    $id('heroGroups').innerHTML = GROUPS.map(([title, a]) => `<section><h3>${title}</h3><div>` + HEROES.slice(a, a + 3).map((h, k) => { const p = portrait(h.look); return `<button type="button" data-i="${a + k}" aria-pressed="${a + k === cur}">${p ? `<img src="${p}" alt="">` : ''}${h.name}</button>`; }).join('') + '</div></section>').join('');
+    for (const b of $id('heroGroups').querySelectorAll('button')) b.onclick = () => { const pick = { ...HEROES[b.dataset.i].look }; if (direct) { look = pick; changed(); } else { draft = pick; renderHeroes(); } };
+    for (const f of document.querySelectorAll('.heroFace')) f.innerHTML = (pic ? `<img src="${pic}" alt="">` : '') + `<b>${cur < 0 ? 'Custom' : HEROES[cur].name}</b><small>Change</small>`; // 在设置里自己搭的形象不在名单里，叫 Custom
+    $id('heroBack').hidden = direct || !canCancel; $id('heroNext').textContent = direct ? 'Done' : 'Next';
   }
-  addEventListener('load', () => { ready = true; renderHeroes(); icons(); });
+  function wizard(cancelable) { // game.js：点 “New world”，或者还没有任何世界时
+    canCancel = cancelable; draft = { ...HEROES[0].look }; $id('wizName').value = 'My island'; $id('wizError').textContent = ''; form.hidden = true; show('heroPage');
+  }
+  function play() { // 用 game.js 原来的建世界流程：把名字填进它的表单再提交；建好后页面重新载入，带个记号直接开始玩
+    const name = $id('wizName').value.trim();
+    if (!name) return void ($id('wizError').textContent = 'Type a name for your world.');
+    $id('saveName').value = name; $id('saveError').textContent = ''; sessionStorage.setItem('stonisle.autoplay', '1');
+    form.requestSubmit();
+    if ($id('saveError').textContent) { sessionStorage.removeItem('stonisle.autoplay'); $id('wizError').textContent = $id('saveError').textContent; }
+  }
+  if (card) {
+    $id('heroBack').onclick = () => show(null);
+    $id('heroNext').onclick = () => { if (direct) return show(null); show('namePage'); if (!matchMedia('(pointer:coarse)').matches) { $id('wizName').focus(); $id('wizName').select(); } }; // 触屏上不自动弹键盘
+    $id('heroFace').onclick = $id('nameBack').onclick = () => show('heroPage');
+    $id('wizPlay').onclick = play;
+    $id('wizName').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') play(); };
+    if (form && !form.hidden) wizard(false); // 还没有世界：game.js 已经把它的表单打开了，换成这套流程
+  }
+  addEventListener('load', () => {
+    ready = true; renderHeroes(); icons();
+    if (sessionStorage.getItem('stonisle.autoplay')) { sessionStorage.removeItem('stonisle.autoplay'); setTimeout(() => $id('start').click(), 400); } // 刚建好世界：直接开始
+  });
   renderHeroes();
   renderRows();
   let spin = 0; // 拖动预览可以转着看
@@ -207,8 +276,9 @@
   document.getElementById('tab-character').addEventListener('click', () => setTimeout(draw, 0)); // 切到这一页时画出来（也带上刚换的装备）
   addEventListener('load', draw);
   window.Avatar = { build, walk, pose, hold, colors, inWater, clean, icon, get look() { return look; },
+    wizard, shot: (gear, held) => portrait(look, gear, held), // bag-tabs.js：背包角色页里穿着装备的预览
     newWorld(id) { localStorage.setItem(keyOf(id), JSON.stringify(draft)); },                                   // game.js 新建世界时调用：把刚选的角色记给它
-    direct(before) { direct = true; before.before(heroBox); renderHeroes(); } };                                // net.js：访客的加入界面上直接选自己的形象
+    direct(before) { direct = true; const f = document.createElement('button'); f.type = 'button'; f.className = 'heroFace'; f.setAttribute('aria-label', 'Change character'); f.onclick = () => show('heroPage'); before.before(f); renderHeroes(); } }; // net.js：访客的加入界面上点头像选自己的形象
 })();
 
 // —— 第三人称视角 ——按 V 或在设置 → Controls 里切换。镜头退到身后约 4 格，被方块挡住就往前收；

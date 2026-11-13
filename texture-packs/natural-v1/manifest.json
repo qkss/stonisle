@@ -89,5 +89,21 @@
       49,
       60
     ]
+  },
+  "stoneHarvest": {
+    "file": "stone-harvest-source.png",
+    "columns": 3,
+    "rows": 3,
+    "atlasTiles": [
+      64,
+      65,
+      66,
+      67,
+      68,
+      70,
+      71,
+      72,
+      73
+    ]
   }
 }

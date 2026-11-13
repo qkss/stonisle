@@ -13,10 +13,15 @@
     60:['wood',1.5],61:['wood',1.5],62:['wood',1.5],63:['wood',1.5],64:['sand',.6],65:['sand',.6],66:['wood',1.2],67:['wood',1.2],
     96:['sand',.8],97:['wood',1], // 荧光玻璃、冰灯
     74:['wood',.6],75:['wood',.6],76:['wood',2], // 告示牌、箱子
+    116:['leaf',.15],117:['leaf',.15],118:['leaf',.15],179:['wood',.8],119:['leaf',.8],143:['leaf',.8],144:['leaf',.35],145:['leaf',.35],152:['leaf',.35], // 蘑菇、南瓜、西瓜、三种果树的树冠
+    159:['leaf',.35],176:['leaf',.35],199:['leaf',.35], // 香蕉树叶、葡萄藤、荔枝树叶
+    183:['leaf',.6], // 粘液方块
+    154:['rock',5.6],155:['rock',5],156:['rock',6],157:['rock',4.4],158:['rock',4], // 花岗岩、大理石、石英石、石板岩、鹅卵石
+    77:['leaf',.15],78:['leaf',.15],79:['leaf',.15],87:['leaf',.15],88:['leaf',.15],99:['leaf',.15],89:['wood',.6],98:['soil',.9], // 新花、幼苗、竹子、耕地
     68:['leaf',.15],69:['leaf',.15],70:['leaf',.15],71:['leaf',.3],72:['leaf',.3],73:['leaf',.15],
     50:['sand',.8],51:['rock',3.2],52:['rock',4.8],53:['leaf',.6],54:['sand',.7],55:['rock',4],56:['rock',9],57:['rock',9],58:['rock',9],59:['wood',1],
   };
-  for(const id of [...Array.from({length:16},(_,i)=>160+i),180,181,182,...Array.from({length:15},(_,i)=>184+i),...Array.from({length:48},(_,i)=>200+i)])blocks[id]=['wood',id<184?2.4:1.5];
+  for(const id of [...Array.from({length:16},(_,i)=>160+i),180,181,182,...Array.from({length:15},(_,i)=>184+i),...Array.from({length:56},(_,i)=>200+i)])blocks[id]=['wood',id<184?2.4:1.5];
   // Unknown items, blocks, food and torches dig like bare hands.
   const tools={
     16:{rock:.5,wood:1.1,soil:.95,sand:1,leaf:1.2}, // wooden pick：比空手快一倍，比石镐慢一半多
