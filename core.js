@@ -291,13 +291,15 @@
         let seed = Math.floor(rnd(21) * 4294967296) >>> 0;
         const r = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; // 每棵树自己的随机数，位置定了长相就定了
         const D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
-        const limb = (px, py, pz, dir, len, depth) => { // 从 (px, py, pz) 朝 dir 方向长 len 格：每格横移一步，多半同时抬高一格；中途可能再分出一根小枝
+        const limb = (px, py, pz, dir, len, depth) => { // 从 (px, py, pz) 朝 dir 方向长 len 段：每段先横着伸一步，多半再往上接一格（拐角）；中途可能再分出一根小枝
           let lx = px, ly = py, lz = pz;
           for (let i = 0; i < len; i++) {
             const nx = lx + D8[dir][0], nz = lz + D8[dir][1];
             if (Math.abs(nx) > 4 || Math.abs(nz) > 4) break;                       // 枝最远伸出 4 格，加上树冠不超过扫描范围
-            lx = nx; lz = nz; if (i % 2 || r() < 0.65) ly++;
-            put(x + lx, base + ly, z + lz, log);
+            // 每一格都和上一格面对面连着，不留只碰到棱角的“悬空台阶”：斜向分成先横一步再纵一步，抬高时在转弯处直接往上接一格，形成拐角
+            if (nx !== lx) { lx = nx; put(x + lx, base + ly, z + lz, log); }
+            if (nz !== lz) { lz = nz; put(x + lx, base + ly, z + lz, log); }
+            if (i % 2 || r() < 0.65) { ly++; put(x + lx, base + ly, z + lz, log); }
             if (depth < 2 && i >= 1 && r() < 0.4) limb(lx, ly, lz, (dir + (r() < 0.5 ? 1 : 7) + (r() < 0.3 ? (r() < 0.5 ? 1 : 7) : 0)) % 8, 1 + Math.floor(r() * 2), depth + 1); // 往旁边偏 45° 或 90° 再分叉
             if (r() < 0.25) dir = (dir + (r() < 0.5 ? 1 : 7)) % 8;                 // 枝自己也会拐一点弯
           }

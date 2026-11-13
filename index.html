@@ -271,8 +271,45 @@
     </div>
   </div>
 </div>
+<!-- 加载界面：页面一打开就显示。先数脚本（前 60%），再等材质图片到齐（后 40%），都好了才露出开始界面 -->
+<div id="loading" style="position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#1c1611;color:#f1e2c7;font:16px system-ui,sans-serif;transition:opacity .4s">
+  <div style="width:min(360px,80vw);text-align:center">
+    <div style="font:600 34px Georgia,serif;letter-spacing:2px;color:#efd6a0;margin-bottom:22px">Stonisle</div>
+    <div style="height:14px;border-radius:8px;background:#0006;border:1px solid #937246;overflow:hidden"><div id="loadBar" style="height:100%;width:0;background:linear-gradient(#8a9a5a,#5c6e3c);transition:width .2s"></div></div>
+    <div id="loadText" style="margin-top:12px;font-size:14px;color:#dfcaa6">Loading… 0%</div>
+  </div>
+</div>
+<script>
+(() => {
+  const bar = document.getElementById('loadBar'), text = document.getElementById('loadText'), box = document.getElementById('loading');
+  let scripts = 0, scriptTotal = 1, imgDone = 0, imgTotal = 0, pageLoaded = false, finished = false, settle = 0;
+  function show() {
+    const s = scripts / scriptTotal, i = imgTotal ? imgDone / imgTotal : pageLoaded ? 1 : 0, pct = Math.round((s * 0.6 + i * 0.4) * 100);
+    bar.style.width = pct + '%';
+    text.textContent = s < 1 ? `Loading game… ${pct}%` : imgDone < imgTotal ? `Loading pictures ${imgDone}/${imgTotal}… ${pct}%` : `Almost ready… ${pct}%`;
+    clearTimeout(settle); if (pageLoaded && imgDone >= imgTotal) settle = setTimeout(finish, 350); // 图片是一批接一批请求的：安静 0.35 秒才算真的到齐
+  }
+  function finish() { if (finished) return; finished = true; bar.style.width = '100%'; box.style.opacity = 0; setTimeout(() => box.remove(), 450); }
+  window.__loadTotal = n => { scriptTotal = n; }; window.__loadStep = () => { scripts++; show(); };
+  // 游戏里的材质都是用 new Image() 读的：包一层，数一数发出去几张、回来几张（内嵌的 data: 图不算）
+  const Native = window.Image, src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  window.Image = function (w, h) {
+    const img = new Native(w, h); let counted = false;
+    Object.defineProperty(img, 'src', { configurable: true, get() { return src.get.call(img); }, set(v) {
+      if (!counted && !finished && !/^(data|blob):/.test(v)) { counted = true; imgTotal++; const done = () => { imgDone++; show(); }; img.addEventListener('load', done, { once: true }); img.addEventListener('error', done, { once: true }); show(); }
+      src.set.call(img, v);
+    } });
+    return img;
+  };
+  window.Image.prototype = Native.prototype;
+  addEventListener('load', () => { pageLoaded = true; show(); });
+  setTimeout(finish, 45000); // 网络太差时不把人永远挡在外面
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- ponytail: 开发期每次加载都带时间戳，免得浏览器缓存旧脚本；定版后换回普通 script 标签 -->
-<script>for (const f of ['core.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'creative.js', 'avatar.js']) document.write(`<script src="${f}?${Date.now()}"><\/script>`);</script>
+<script>const V = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.host) ? Date.now() : encodeURIComponent(document.lastModified); 
+const FILES = ['core.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'creative.js', 'avatar.js']; __loadTotal(FILES.length);
+for (const f of FILES) document.write(`<script src="${f}?${V}"><\/script><script>__loadStep()<\/script>`);</script>
 </body>
 </html>
