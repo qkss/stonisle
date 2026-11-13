@@ -864,11 +864,11 @@
     const T = m.type, dd = Math.hypot(m.x - q.x, m.y - (q.y + 1), m.z - q.z), torch = q.held === TORCH;
     if (!T.day && dayK > 0.5) { m.hp = 0; return; }                                                   // 夜行的天亮消散
     const food = [MEAT, 32, 112, 115].includes(q.held), inWater = world.get(Math.floor(q.x), Math.floor(q.y + 0.5), Math.floor(q.z)) === WATER;
-    let mean = !!T.hostile && !T.drift && dd < 14 && !(T.wantsFood && !food) && !(T.swim && !inWater); // 啄鸦只在你拿着食物时来；鱼只在你下水时追
-    const scared = T.fearsLight && torch && dd < 6;                                                   // 洞蝠、霜灵怕火把
+    let mean = !q.dn && !!T.hostile && !T.drift && dd < 14 && !(T.wantsFood && !food) && !(T.swim && !inWater); // 啄鸦只在你拿着食物时来；鱼只在你下水时追
+    const scared = (T.fearsLight && torch && dd < 6) || (q.dn && !!T.hostile && dd < 10); /* 对手倒下了：飞走 */                                                   // 洞蝠、霜灵怕火把
     const near = j => { const hx = m.x - q.x, hz = m.z - q.z, hd = Math.hypot(hx, hz) || 1, r = (T.reach || 1.3) - 0.15; return [q.x + hx / hd * r + (Math.random() - 0.5) * j * 0.4, q.y + 1 + (Math.random() - 0.5) * j, q.z + hz / hd * r + (Math.random() - 0.5) * j * 0.4]; }; // 扑向玩家时停在够得着的距离上，不钻进身体里
     let warn = false;
-    if (T.cycle && dd < 24 && !(T.swim && !inWater)) { // 盘旋 → 发亮预警 1 秒 → 俯冲 → 休息
+    if (T.cycle && !q.dn && dd < 24 && !(T.swim && !inWater)) { // 盘旋 → 发亮预警 1 秒 → 俯冲 → 休息
       const [orbit, dive, rest, r, up] = T.cycle;
       m.cy = ((m.cy || 0) + dt) % (orbit + 1 + dive + rest);
       if (T.wantsWeak && !q.low && m.cy > orbit - 0.2) m.cy = 0;                                       // 沙鹫：你的生命不到一半才下来，否则一直盘旋
@@ -891,7 +891,7 @@
     if (to) { if (sp > 1e-4 && (to[0] !== m.x || to[2] !== m.z)) m.a = Math.atan2(to[0] - m.x, to[2] - m.z); m.x = to[0]; m.y = to[1]; m.z = to[2]; }
     else m.t = 0;                                                                                     // 去不了：马上换个目标
     const drag = Math.exp(-6 * dt); m.kx *= drag; m.kz *= drag;
-    if (T.hostile && (mean || T.drift) && dd < (T.reach || 1.3) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; if (!T.drift) m.a = Math.atan2(q.x - m.x, q.z - m.z); bite(q, T.dmg, T.slows, T.push && [(q.x - m.x) / (dd || 1) * T.push, (q.z - m.z) / (dd || 1) * T.push]); } // 碰到才受伤；霜灵再加 3 秒减速
+    if (T.hostile && !q.dn && (mean || T.drift) && dd < (T.reach || 1.3) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; if (!T.drift) m.a = Math.atan2(q.x - m.x, q.z - m.z); bite(q, T.dmg, T.slows, T.push && [(q.x - m.x) / (dd || 1) * T.push, (q.z - m.z) / (dd || 1) * T.push]); } // 碰到才受伤；霜灵再加 3 秒减速
     if (T.cave && !covered(m.x, m.y, m.z)) { if ((m.out = (m.out || 0) + dt) > 4) m.hp = 0; } else m.out = 0; // 洞蝠离开洞穴 4 秒就散
     m.sq -= dt; m.ph += dt * 10;
     m.mobMat.emissive.setRGB(Math.max(0,m.sq)/.24*.85,0,0); if (warn && m.sq <= 0) m.mobMat.emissive.setHex(0xaa8800); // 俯冲前发亮
@@ -976,9 +976,10 @@
   function takeLoot(loot, sad) { for (const id in loot) give(+id, loot[id]); if (sad) Lang.say('Oh no. Poor moth.', false, 1.4); }
   function tickMobs(dt) {
     if (window.Net && Net.guest) return mirrorMobs(dt);                       // 联机访客：生物由主机计算，这里只显示
-    p.held = selectedItem(); p.cloak = equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; p.low = hp < MAXHP / 2;                        // 怪物看的是“最近的那个玩家”，联机时可能是别人
+    p.held = selectedItem(); p.cloak = equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; p.low = hp < MAXHP / 2; p.dn = dead;                        // 怪物看的是“最近的那个玩家”，联机时可能是别人
     const everyone = window.Net ? [p, ...Net.others()] : [p];
-    const near = m => everyone.reduce((a, b) => Math.hypot(b.x - m.x, b.z - m.z) < Math.hypot(a.x - m.x, a.z - m.z) ? b : a);
+    const alive = everyone.filter(e => !e.dn), targets = alive.length ? alive : everyone; /* 倒下的玩家不算目标；全都倒下了才看倒下的（只为算距离，不会再咬） */
+    const near = m => targets.reduce((a, b) => Math.hypot(b.x - m.x, b.z - m.z) < Math.hypot(a.x - m.x, a.z - m.z) ? b : a);
     const bite = (q, d, slow, push) => { if (q === p) { hurt(d); if (slow) slowMe(); if (push) pushMe(push[0], push[1]); } else Net.hurt(q.id, d, slow, push); };
     if (!animalPreview && (spawnT -= dt) < 0) { // 夜里优先补影狼（最多 3 只），其余时间补普通动物（最多 8 只）
       spawnT = 1.5; const c = everyone[Math.floor(Math.random() * everyone.length)], keep = [p.x, p.y, p.z]; p.x = c.x; p.y = c.y; p.z = c.z; // ponytail: 刷怪函数都围着 p 找位置，联机时临时把 p 挪到被选中的玩家那里，刷完挪回来
@@ -998,12 +999,13 @@
       let chase = false, back = false; const stand = 1 + (m.type.r || 0.4); // 和玩家保持的距离：身体前沿离你大约一格
       if (m.type.foe) {
         const T = m.type, dd = Math.hypot(m.x - q.x, m.z - q.z);
+        if (q.dn && dd < 10 && !T.still) m.flee = 0.5;                                        // 对手已经倒下：不再攻击，转身走开
         if (T.charge && dd < T.charge) m.angry = 3;                                            // 鬃猪：靠近到 4 格内就发怒 3 秒
         m.angry = Math.max(0, (m.angry || 0) - dt);
         if (T.sleeper && !m.awake) { if (m.wake) { if ((m.wake -= dt) <= 0) m.awake = true; } else if (dd < T.sleeper) m.wake = 2; m.walk = false; m.t = 9; } // 岩偶：走到 3 格内才醒，起身要 2 秒
         if (T.burrow) m.up = dd < 2.5 ? (m.up || 0) + dt : 0;                                   // 沙虫：到你身边才钻出来，钻出 1 秒后才咬
         const onSand = !T.burrow || world.get(Math.floor(q.x), Math.floor(q.y - 0.5), Math.floor(q.z)) === 4; // 你站在岩石或砖上它上不来
-        const mean = (T.hostile || m.angry > 0) && !(T.sleeper && !m.awake) && onSand && !(T.burrow && dd < 2.5 && m.up < 1),
+        const mean = !q.dn && (T.hostile || m.angry > 0) && !(T.sleeper && !m.awake) && onSand && !(T.burrow && dd < 2.5 && m.up < 1),
           sight = q.cloak === 2 ? 12 : T === WOLF && q.cloak ? 8 : 18; // 影行斗篷：所有怪物 12 格外不发现你 // 穿着夜行斗篷，影狼 8 格外不发现你
         if (!T.day && dayK > 0.5) m.hp = 0;                                                    // 夜行的怪物天亮消散
         else if (T.still) { m.walk = false; m.t = 9; }                                         // 缠藤不会走

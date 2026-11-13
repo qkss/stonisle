@@ -13,9 +13,10 @@
   } catch (e) { /* 不是 server.js 起的服务：没有联机 */ }
   if (!hello || typeof hello.host !== 'boolean') return;
 
-  const guest = !hello.host, id = Math.random().toString(36).slice(2, 10), ME = 'stonisle.lan.me', NAME = 'stonisle.lan.name';
+  const guest = !hello.host, id = Math.random().toString(36).slice(2, 10), ME = 'stonisle.lan.me', HOSTING = 'stonisle.lan.hosting', NAME = 'stonisle.lan.name';
   const state = hello.state || {}, players = new Map(); // 别的玩家：id → { name, host, mesh, to: [x, y, z, yaw] }
   let gearKey = '', es = null, out = [], applying = false, last = '', name = localStorage.getItem(NAME) || '', pk = !!state.pk;
+  const saveId = parseInt(new URLSearchParams(location.search).get('save'), 10) || 1; // 主机正在玩的是哪个世界（和 game.js 的算法一样）
   const read = k => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
   const post = (path, data) => fetch(path, { method: 'POST', body: JSON.stringify(data) }).catch(() => {});
   const send = m => { if (es) out.push(m); };
@@ -75,6 +76,7 @@
     else if (m.t === 'b') { applying = true; try { game.setBlock(m.x, m.y, m.z, m.id); } finally { applying = false; } }
     else if (m.t === 'h') { applying = true; try { Home.sync(m.d); } finally { applying = false; } }
     else if (m.t === 't' && guest) game.time = m.time;
+    else if (m.t === 'taken') { sessionStorage.removeItem(HOSTING); disconnect(); const b = document.getElementById('lan'); if (b) b.checked = false; list(); if (info) info.textContent = 'Another window on this computer is hosting now. This window is playing alone.'; }
     else if (m.t === 'closed') { disconnect(); document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:#000c;color:#fff;font:20px system-ui;text-align:center">The host closed the world.<br>Ask them to open it again, then reload this page.</div>'); }
   }
   function connect() {
@@ -92,30 +94,44 @@
     const who = [...players.values()].map(pl => pl.name + (pl.host ? ' (host)' : '')).join(', ');
     if (guest) info.textContent = `You are visiting a shared world as ${name}. ` + (who ? `Also here: ${who}. ` : '') + (pk ? 'Players can hit each other.' : '');
     else if (!es) info.textContent = 'Only you can play in this world.';
-    else info.innerHTML = `Send this address to players on the same Wi‑Fi:<br>${(hello.addrs.length ? hello.addrs : ['(no network found)']).map(a => `<b style="user-select:all">${a}</b>`).join('<br>')}<br>${who ? 'Here now: ' + who + '.' : 'Nobody has joined yet.'}`;
+    else { info.innerHTML = `Send this address to players on the same Wi‑Fi:<br>${(hello.addrs.length ? hello.addrs : ['(no network found)']).map(a => `<b style="user-select:all">${a}</b>`).join('<br>')}<br>${who ? 'Here now: ' + who + '.' : 'Nobody has joined yet.'}<br>Or scan this with a phone camera:<br><canvas id="lanQr" style="margin-top:6px;border-radius:6px"></canvas>`; if (hello.addrs.length && window.QR) QR.draw(document.getElementById('lanQr'), hello.addrs[0]); else document.getElementById('lanQr').hidden = true; }
+  }
+  function joinCard() { // 访客的开始界面：不选也不建自己的世界，告诉他要进谁的哪个世界，填昵称、选形象，点 Join 才连上
+    const $ = i => document.getElementById(i), host = (hello.players.find(pl => pl.host) || {}).name || 'the host';
+    for (const i of ['saveCards', 'newSave', 'saveForm']) $(i).style.display = 'none';
+    $('saveIntro').textContent = `You are joining ${host}'s world “${state.world || 'World'}”.`;
+    $('saveIntro').insertAdjacentHTML('afterend', '<label for="joinName" style="display:block;margin:14px 0 6px">Your name</label><input id="joinName" maxlength="12" autocomplete="off" placeholder="Type your name" style="width:100%;box-sizing:border-box;font:inherit;padding:11px;border:1px solid #957a50;border-radius:4px;background:#211b16;color:#f6e6c7">');
+    const box = $('joinName'), start = $('start'), ok = () => { start.disabled = !box.value.trim(); };
+    box.value = localStorage.getItem(NAME) || ''; start.textContent = 'Join'; box.oninput = ok; ok();
+    start.addEventListener('click', () => {
+      if (es) return;
+      name = cleanName(box.value); localStorage.setItem(NAME, name); $('lanName').value = name; box.disabled = true; start.textContent = 'Play';
+      connect(); list();
+    });
   }
   async function setOpen(on) {
     if (on) {
       const h = read('stonisle.home');
-      const r = await post('/net/open', { on: true, edits: game.world.edits, home: { signs: h.signs || {}, chests: h.chests || {} }, time: game.time });
-      if (r && r.ok) { hello.addrs = (await r.json()).addrs; connect(); send({ t: 'pkmode', on: pk }); }
-    } else { disconnect(); await post('/net/open', { on: false }); }
+      const r = await post('/net/open', { on: true, world: read('stonisle.save.v2' + (saveId > 1 ? '.' + saveId : '')).name || 'World', edits: game.world.edits, home: { signs: h.signs || {}, chests: h.chests || {} }, time: game.time });
+      if (r && r.ok) { sessionStorage.setItem(HOSTING, '1'); hello.addrs = (await r.json()).addrs; connect(); send({ t: 'pkmode', on: pk }); }
+    } else { sessionStorage.removeItem(HOSTING); disconnect(); await post('/net/open', { on: false }); }
     list();
   }
 
   addEventListener('load', () => {
     if (!window.game) return;
-    document.getElementById('settings-world').insertAdjacentHTML('afterbegin', '<h2>Play together</h2><label>Your name <input id="lanName" maxlength="12" style="width:120px"></label>' +
+    document.getElementById('lanOff').remove(); // 没有 server.js 时（线上版）这一页只有那段说明
+    document.getElementById('settings-together').insertAdjacentHTML('afterbegin', '<h2>Play together</h2><label>Your name <input id="lanName" maxlength="12" style="width:120px"></label>' +
       (guest ? '' : '<label><input id="lan" type="checkbox"> Open to LAN <small>(players on your Wi‑Fi can join this world)</small></label><label><input id="lanPk" type="checkbox"> Players can hit each other <small>(PK)</small></label>') + '<p class="settingsHint" id="lanInfo"></p>');
     info = document.getElementById('lanInfo');
     const nameBox = document.getElementById('lanName'); nameBox.value = name;
     nameBox.onchange = () => { name = nameBox.value = cleanName(nameBox.value); localStorage.setItem(NAME, name); if (es) { disconnect(); connect(); } list(); }; // 改名：重新连一次，别人看到新名字
-    if (guest) connect();
+    if (guest) joinCard();
     else { const pkBox = document.getElementById('lanPk'); pkBox.onchange = () => { pk = pkBox.checked; send({ t: 'pkmode', on: pk }); };
-      const box = document.getElementById('lan'); box.onchange = () => setOpen(box.checked); if (hello.open) { box.checked = true; setOpen(true); } } // 主机刷新页面：门还开着，把世界重新交一次
+      const box = document.getElementById('lan'); box.onchange = () => setOpen(box.checked); if (hello.open && (!hello.hosted || sessionStorage.getItem(HOSTING))) { /* 这个窗口刷新前就是主机，或者没有别的窗口在当主机 */ box.checked = true; setOpen(true); } } // 主机刷新页面：门还开着，把世界重新交一次
     list();
     setInterval(() => { // 每 100ms：自己的位置变了就报一次，攒着的消息一起发
-      if (!es) return;
+      if (!es || es.readyState !== 1) return; /* 连接还没建好就发会被服务器拒掉，第一批消息（形象、装备）就丢了；先攒着 */
       const p = game.p, held = game.held, cloak = game.cloak, low = game.low, sw = game.swinging, air = game.air, dn = game.dead, now = [p.x, p.y, p.z, game.yaw].map(v => +v.toFixed(2)).join() + held + cloak + low + sw + air + dn;
       if (now !== last) { last = now; out.push({ t: 'p', x: p.x, y: p.y, z: p.z, yaw: game.yaw, held, cloak, low, sw, air, dn }); }
       if (game.equip.join() !== gearKey) sendLook();                          // 换了装备：别人看到的样子跟着变
@@ -130,7 +146,7 @@
       for (const pl of players.values()) if (pl.to) { const m = pl.mesh.position; const moved = Math.hypot(pl.to[0] - m.x, pl.to[2] - m.z); m.x += (pl.to[0] - m.x) * 0.3; m.y += (pl.to[1] - m.y) * 0.3; m.z += (pl.to[2] - m.z) * 0.3; pl.mesh.rotation.y = pl.to[3];
         pl.ph += moved > 0.01 ? 0.3 : 0; pl.sw = Math.max(0, (pl.sw || 0) - 1 / 60);
         const swim = Avatar.inWater(m.x, m.y, m.z); if (swim) pl.ph += 0.1;
-        Avatar.pose(pl.mesh, pl.ph, moved > 0.01 ? 1 : 0, pl.sw > 0 ? 1 - pl.sw / 0.3 + 0.01 : 0, pl.air && !swim, swim); if (pl.dn) pl.mesh.rotation.x = 1.5; } // 对方倒下了：仰面躺着
+        Avatar.pose(pl.mesh, pl.ph, moved > 0.01 ? 1 : 0, pl.sw > 0 ? 1 - pl.sw / 0.3 + 0.01 : 0, pl.air && !swim, swim); if (pl.dn) { pl.mesh.rotation.x = 1.5; pl.mesh.visible = (pl.dnT = (pl.dnT || 0) + 1 / 60) < 2.5; } else if (pl.dnT) { pl.dnT = 0; pl.mesh.rotation.x = 0; m.set(pl.to[0], pl.to[1], pl.to[2]); pl.mesh.visible = true; } } // 对方倒下了：仰面躺着
       requestAnimationFrame(smooth);
     })();
   });

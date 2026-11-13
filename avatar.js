@@ -133,7 +133,7 @@
   const walk = pose;
 
   // —— 设置里的选择和预览 ——
-  const world = document.getElementById('settings-world');
+  const world = document.getElementById('settings-character');
   if (!world || !window.THREE) return void (window.Avatar = { build, walk, pose, hold, colors, inWater, clean, get look() { return look; } });
   world.insertAdjacentHTML('beforeend', '<h2>Your character</h2><p class="settingsHint">Other players see this when you play together.</p><div id="lookBox" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap"><canvas id="lookView" width="220" height="300" style="width:110px;height:150px;border-radius:8px;background:#1d1712"></canvas><div id="lookRows" style="flex:1;min-width:180px"></div></div>');
   const view = document.getElementById('lookView'), rows = document.getElementById('lookRows');
@@ -187,7 +187,7 @@
   view.style.cursor = 'grab'; view.style.touchAction = 'none';
   view.onpointerdown = e => { view.setPointerCapture(e.pointerId); let x = e.clientX; view.onpointermove = m => { spin += (m.clientX - x) * 0.02; x = m.clientX; if (model) { model.rotation.y = spin; renderer.render(scene, cam); } }; };
   view.onpointerup = () => { view.onpointermove = null; };
-  document.getElementById('tab-world').addEventListener('click', () => setTimeout(draw, 0)); // 切到这一页时画出来（也带上刚换的装备）
+  document.getElementById('tab-character').addEventListener('click', () => setTimeout(draw, 0)); // 切到这一页时画出来（也带上刚换的装备）
   addEventListener('load', draw);
   window.Avatar = { build, walk, pose, hold, colors, inWater, clean, get look() { return look; } };
 })();
@@ -198,11 +198,11 @@
 (() => {
   if (!window.Avatar || !window.THREE) return;
   const KEY = 'stonisle.third', BACK = 4, fwd = new THREE.Vector3(), eye = new THREE.Vector3(), right = new THREE.Vector3();
-  let on = localStorage.getItem(KEY) === '1', me = null, meKey = '', last = null, phase = 0, dist = BACK, deadT = 0, cam = null;
+  let on = localStorage.getItem(KEY) === '1', me = null, meKey = '', last = null, phase = 0, dist = BACK, deadT = 0, lie = 0, cam = null;
   function set(v) { on = v; localStorage.setItem(KEY, on ? '1' : '0'); const box = document.getElementById('third'); if (box) box.checked = on; if (me) me.visible = false; }
   function apply(camera, dt) {
     const g = window.game, p = g.p;
-    if (!on && !g.dead) { if (me) me.visible = false; deadT = 0; return; } // 第一人称下倒地时也临时切到身外，看得见自己
+    if (!on && !g.dead) { if (me) me.visible = false; deadT = lie = 0; return; } // 第一人称下倒地时也临时切到身外，看得见自己
     const key = JSON.stringify(Avatar.look) + g.equip.join() + '/' + g.held + '/' + g.naturalItems;
     if (key !== meKey) { // 形象、装备或手里的东西变了：重建自己的小人
       if (me) g.scene.remove(me);
@@ -210,16 +210,16 @@
     }
     const moved = last ? Math.hypot(p.x - last[0], p.z - last[1]) : 0, swim = Avatar.inWater(p.x, p.y, p.z); last = [p.x, p.z];
     phase += swim ? dt * 6 : moved > 0.002 ? dt * 12 : 0;
-    me.position.set(p.x, p.y, p.z); me.rotation.y = g.yaw;
+    me.position.set(p.x, p.y, p.z); me.rotation.y = g.yaw; me.rotation.x = 0;
     Avatar.pose(me, phase, moved > 0.002 ? 1 : 0, g.swinging ? g.swingPhase + 0.01 : 0, g.air && !swim, swim); // 挥动进度直接取游戏里的，按住连挥时每一下都从头挥
     if (g.dead) { // 倒下：仰面躺着；镜头在 1.5 秒里升到身后上方俯视，头顶有方块就停在它下面
-      me.rotation.x = 1.5; me.position.y += 0.25; me.visible = true;
+      me.rotation.x = 1.5; me.position.y += 0.25; me.visible = (lie += dt) < 2.5; /* 倒下 2.5 秒后身体消失，醒来时不会留下第二个身体 */
       deadT = Math.min(1, deadT + dt / 1.5); const e = deadT * deadT * (3 - 2 * deadT);
       const roof = Core.raycast((x, y, z) => g.world.get(x, y, z), [p.x, p.y + 1, p.z], [0, 1, 0], 6), h = 1 + Math.min(4.5 * e, roof ? Math.max(0, roof.t - 0.4) : 9);
       camera.position.set(p.x + Math.sin(g.yaw) * 2.2 * e, p.y + h, p.z + Math.cos(g.yaw) * 2.2 * e); camera.lookAt(p.x, p.y + 0.3, p.z);
       return;
     }
-    deadT = 0;
+    deadT = lie = 0;
     fwd.set(0, 0, -1).applyQuaternion(camera.quaternion); eye.copy(camera.position);
     const hit = Core.raycast((x, y, z) => g.world.get(x, y, z), eye.toArray(), [-fwd.x, -fwd.y, -fwd.z], BACK + 0.3); // 身后有没有方块挡着
     const want = hit ? Math.max(0.3, hit.t - 0.3) : BACK;

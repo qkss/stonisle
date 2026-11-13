@@ -139,7 +139,7 @@
   #card select { appearance: none; max-width: 100%; box-sizing: border-box; margin-left: 6px; padding: 9px 32px 9px 12px; min-height: 40px; font: inherit; color: #f0dfbd; border: 1px solid #94774d; border-radius: 4px; background: linear-gradient(45deg,transparent 50%,#d8bd83 50%) calc(100% - 15px) 50%/5px 5px no-repeat,linear-gradient(135deg,#d8bd83 50%,transparent 50%) calc(100% - 10px) 50%/5px 5px no-repeat,#211b16; box-shadow: inset 0 2px 4px #0003; }
   #card select option { background: #2c241d; color: #f0dfbd; }
   #card #wickVoice { width: min(340px,100%); }
-  #card input[type=checkbox] { appearance: none; display: inline-grid; place-content: center; width: 20px; height: 20px; margin: 0 8px 0 0; vertical-align: -4px; border: 1px solid #a58a5b; border-radius: 3px; background: #211b16; cursor: pointer; }
+  #card input[type=checkbox] { appearance: none; display: inline-grid; place-content: center; width: 20px; height: 20px; margin: 0 8px 0 0; vertical-align: middle; border: 1px solid #a58a5b; border-radius: 3px; background: #211b16; cursor: pointer; }
   #card input[type=checkbox]:checked { background: #627344; border-color: #bfbd86; }
   #card input[type=checkbox]:checked::after { content: ''; width: 9px; height: 5px; border-left: 2px solid #fff0ca; border-bottom: 2px solid #fff0ca; transform: translateY(-1px) rotate(-45deg); }
   #card input[type=range] { appearance: none; width: min(180px,35vw); height: 8px; margin: 0 8px; border: 1px solid #8f7448; border-radius: 4px; background: #1e1a14; cursor: pointer; }
@@ -240,7 +240,9 @@
       <button id="tab-graphics" role="tab" aria-controls="settings-graphics" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4M6 13l4-4 3 3 2-2 3 3"/></svg><span>Graphics</span></button>
       <button id="tab-audio" role="tab" aria-controls="settings-audio" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4Z M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg><span>Audio</span></button>
       <button id="tab-controls" role="tab" aria-controls="settings-controls" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10c3 0 4 3 4 7s-2 5-4 2H7c-2 3-4 2-4-2s1-7 4-7Z M8 10v4m-2-2h4"/><circle cx="16" cy="11" r=".7"/><circle cx="18" cy="13" r=".7"/></svg><span>Controls</span></button>
-      <button id="tab-world" role="tab" aria-controls="settings-world" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7Zm0 10L3 7m9 5 9-5m-9 5v10M7.5 4.5l9 5"/></svg><span>World</span></button>
+      <button id="tab-world" role="tab" aria-controls="settings-world" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5v10l-9 5-9-5V7Zm0 10L3 7m9 5 9-5m-9 5v10M7.5 4.5l9 5"/></svg><span>Game</span></button>
+      <button id="tab-together" role="tab" aria-controls="settings-together" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c0-4 3-6 6-6s6 2 6 6m1-6.500c3-.5 7 1 7 5.500"/></svg><span>Together</span></button>
+      <button id="tab-character" role="tab" aria-controls="settings-character" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="2" width="8" height="7" rx="1"/><path d="M6 10h12v7h-3v5H9v-5H6Z"/></svg><span>Character</span></button>
     </nav>
     <div class="settingsContent">
       <section id="settings-graphics" role="tabpanel" aria-labelledby="tab-graphics" tabindex="0">
@@ -267,6 +269,8 @@
         <h2>World management</h2><p class="settingsHint">Reset starts this world over. Your other worlds are kept.</p>
         <button id="reset">Reset this world</button>
       </section>
+      <section id="settings-together" role="tabpanel" aria-labelledby="tab-together" tabindex="0" hidden><div id="lanOff"><h2>Play together</h2><p class="settingsHint">Playing together is not available on this website. It works when the game runs on a home computer, for players on the same Wi‑Fi.</p></div></section>
+      <section id="settings-character" role="tabpanel" aria-labelledby="tab-character" tabindex="0" hidden></section>
     </div>
     </div>
   </div>
@@ -309,7 +313,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- ponytail: 开发期每次加载都带时间戳，免得浏览器缓存旧脚本；定版后换回普通 script 标签 -->
 <script>const V = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.host) ? Date.now() : encodeURIComponent(document.lastModified); 
-const FILES = ['core.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'creative.js', 'avatar.js']; __loadTotal(FILES.length);
+const FILES = ['core.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'qr.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'creative.js', 'avatar.js', 'backup.js', 'audio-test.js']; __loadTotal(FILES.length);
 for (const f of FILES) document.write(`<script src="${f}?${V}"><\/script><script>__loadStep()<\/script>`);</script>
 </body>
 </html>
