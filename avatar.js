@@ -33,12 +33,15 @@
     43: TIER.iron, 44: TIER.iron, 126: TIER.iron, 45: TIER.iron, 127: TIER.alloy, 128: TIER.alloy, 129: TIER.alloy, 131: TIER.alloy,
     46: ['#c9a46a', '#b08a50'], 47: ['#2e2a36', '#46405a'], 48: ['#463a4e', '#2a2230'], 120: ['#c8553a', '#a8402a'], 142: ['#eef2f6', '#c8d4e0'], 146: ['#3a5a4a', '#2a4236'],
     147: ['#3484a8', '#2a6a8a'], 148: ['#6a5038', '#57402c'], 149: ['#a8b8c6', '#6c7c8c'], 150: ['#1c1828', '#463c62'], 151: ['#40506a', '#8ad0ff'] };
-  const clean = l => { const o = {}; for (const k in OPTIONS) o[k] = Number.isInteger(l && l[k]) && l[k] >= 0 && l[k] < OPTIONS[k].length ? l[k] : 0; return o; }; // 别人发来的也过这一道
+  const clean = l => { const o = {}; for (const k in OPTIONS) o[k] = Number.isInteger(l && l[k]) && l[k] >= 0 && l[k] < OPTIONS[k].length ? l[k] : 0;
+    const n = window.Skins ? Skins.list.length : 1; o.outfit = Number.isInteger(l && l.outfit) && l.outfit > 0 && l.outfit < n ? l.outfit : 0; // 皮肤的序号（skins.js），0 = 不用皮肤
+    return o; }; // 别人发来的也过这一道
   const lookOf = id => { let l = null; try { l = JSON.parse(localStorage.getItem(keyOf(id)) || localStorage.getItem(BASE)); } catch (e) { /* 坏数据当没有 */ } return l ? clean(l) : { ...HEROES[0].look }; };
   let look = lookOf(saveId);
 
   function build(lk, gear = []) { // gear：[头, 身, 脚, 腿] 的物品 id，和 game.equip 同序
     const l = clean(lk), g = new THREE.Group(), [head, body, feet, legsGear] = gear.map(id => GEAR[id] || (id ? ['#8a8a9a', '#6a6a78'] : null));
+    const outfit = window.Skins && Skins.list[l.outfit]; if (outfit && outfit.look) Object.assign(l, outfit.look); // 穿着皮肤：上衣、裤子、裙子这些按皮肤的来；肤色、发型、个子还是自己的
     const shade = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString(), tint = (c, k) => '#' + new THREE.Color(c).lerp(new THREE.Color('#ffffff'), k).getHexString(); // 调暗 / 调亮
     const part = (w, h, d, x, y, z, col, to = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: col })); m.position.set(x, y, z); to.add(m); return m; };
     // Use the exact same material and construction details as the inventory model.
@@ -156,6 +159,7 @@
       if (accessory === 'cap') { part(0.45, 0.13, 0.45, 0, 1.915, 0, shade(shirt, 0.85)); part(0.32, 0.03, 0.2, 0, 1.87, -0.3, shade(shirt, 0.65)); part(0.07, 0.03, 0.07, 0, 1.99, 0, tint(shirt, 0.4)); part(0.14, 0.07, 0.02, 0, 1.92, -0.227, tint(shirt, 0.5)); } // 鸭舌帽：帽顶、帽檐、顶扣、前面一块徽标
       if (accessory === 'sun hat') { part(0.8, 0.03, 0.8, 0, 1.885, 0, straw); part(0.42, 0.15, 0.42, 0, 1.97, 0, straw); part(0.44, 0.05, 0.44, 0, 1.92, 0, tint(shirt, 0.1)); part(0.1, 0.12, 0.03, 0.12, 1.86, 0.235, tint(shirt, 0.1)); } // 宽檐草帽：一圈丝带，后面垂一小截
     }
+    if (outfit && outfit.extra) outfit.extra({ part, tint, shade, swing, head: !!head, body: !!body, legs: !!legsGear }); // 皮肤自己加的零件（兜帽、披风、盔甲片……）
     if (SIZE[l.size] === 'kid') { // 小孩：整体缩到 78%，脖子以上再放大 25%
       const hg = new THREE.Group(); hg.position.set(0, 1.44, 0);
       for (const c of [...g.children]) if ((c.isMesh || c.userData.gearPart) && (c.position.y > 1.45 || c.userData.hair)) { c.position.y -= 1.44; hg.add(c); }
@@ -226,7 +230,7 @@
   // —— 设置里的选择和预览 ——
   const world = document.getElementById('settings-character');
   if (!world || !window.THREE) return void (window.Avatar = { build, walk, pose, hold, colors, inWater, clean, get look() { return look; } });
-  world.insertAdjacentHTML('beforeend', '<h2>Your character</h2><p class="settingsHint">Other players see this when you play together.</p><div id="lookBox" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap"><canvas id="lookView" width="220" height="300" style="width:110px;height:150px;border-radius:8px;background:#1d1712"></canvas><div id="lookRows" style="flex:1;min-width:180px"></div></div>');
+  world.insertAdjacentHTML('beforeend', '<h2>Your character</h2><p class="settingsHint">Other players see this when you play together.</p><div id="lookBox" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap"><canvas id="lookView" width="220" height="300" style="width:110px;height:150px;border-radius:8px;background:#1d1712"></canvas><div id="lookRows" style="flex:1;min-width:180px"></div></div><h2>Skins</h2><p class="settingsHint">A skin is a whole outfit with more detail. Do what it asks to unlock it.</p><div id="skinGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px"></div>');
   const view = document.getElementById('lookView'), rows = document.getElementById('lookRows');
   let renderer = null, scene, cam, model;
   function draw() { // 只在选项变了、设置打开时画一帧，不占着显卡
@@ -254,7 +258,15 @@
     handKey = key; const c = colors(look, gear); FirstPersonHand.paint(c.skin, c.sleeve);
   }
   setInterval(paintHand, 500); paintHand();
-  function changed() { localStorage.setItem(KEY, JSON.stringify(look)); renderRows(); draw(); paintHand(); renderHeroes(); icons(); if (window.Net && Net.look) Net.look(); }
+  function renderSkins() { // 皮肤格子：有的直接点了穿上；没解锁的发灰，下面写着怎么得到
+    const grid = document.getElementById('skinGrid'); if (!grid || !window.Skins) return;
+    grid.innerHTML = Skins.list.map((sk, i) => {
+      const has = Skins.has(i), on = (look.outfit || 0) === i, pic = portrait({ ...look, outfit: i });
+      return `<button type="button" data-i="${i}" ${has ? '' : 'disabled'} aria-pressed="${on}" style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:0;padding:4px 2px;background:${on ? '#ffd36b2e' : '#ffffff14'};border:2px solid ${on ? '#ffd36b' : '#0000'};border-radius:6px;color:inherit;font-size:11px;line-height:1.25;cursor:${has ? 'pointer' : 'default'};opacity:1">${pic ? `<img src="${pic}" alt="" style="width:56px;aspect-ratio:4/5;object-fit:contain;${has ? '' : 'filter:brightness(.25) saturate(0)'}">` : ''}<b>${sk.name}</b>${has ? '' : `<small style="color:#d0b782">🔒 ${sk.how}</small>`}</button>`;
+    }).join('');
+    for (const b of grid.querySelectorAll('button:not([disabled])')) b.onclick = () => { look.outfit = +b.dataset.i; changed(); };
+  }
+  function changed() { localStorage.setItem(KEY, JSON.stringify(look)); renderSkins(); renderRows(); draw(); paintHand(); renderHeroes(); icons(); if (window.Net && Net.look) Net.look(); }
   // —— 开局界面：存档那一行左边是这个世界的角色头像；只有新建世界时选一次角色（之后在设置 → Character 里改）——
   // 新建世界分三步，每一步独占开始卡片，不和存档列表挤在一起：选角色（男 / 女 / 男孩 / 女孩四组）→ 起名字（点头像可以回去重选）→ Play。
   const card = document.getElementById('launchCard'), form = document.getElementById('saveForm'), $id = i => document.getElementById(i);
@@ -333,7 +345,7 @@
     if (form && !form.hidden) wizard(false); // 还没有世界：game.js 已经把它的表单打开了，换成这套流程
   }
   addEventListener('load', () => {
-    ready = true; renderHeroes(); icons();
+    ready = true; renderHeroes(); icons(); renderSkins();
     if (sessionStorage.getItem('stonisle.autoplay')) { sessionStorage.removeItem('stonisle.autoplay'); setTimeout(() => $id('start').click(), 400); } // 刚建好世界：直接开始
   });
   renderHeroes();
@@ -345,7 +357,7 @@
   document.getElementById('tab-character').addEventListener('click', () => setTimeout(draw, 0)); // 切到这一页时画出来（也带上刚换的装备）
   addEventListener('load', draw);
   window.Avatar = { build, walk, pose, hold, colors, inWater, clean, icon, get look() { return look; },
-    wizard, shot: (gear, held) => portrait(look, gear, held), // bag-tabs.js：背包角色页里穿着装备的预览
+    refresh: renderSkins, wizard, shot: (gear, held) => portrait(look, gear, held), // bag-tabs.js：背包角色页里穿着装备的预览
     newWorld(id) { localStorage.setItem(keyOf(id), JSON.stringify(draft)); },                                   // game.js 新建世界时调用：把刚选的角色记给它
     direct(before) { direct = true; const f = document.createElement('button'); f.type = 'button'; f.className = 'heroFace'; f.setAttribute('aria-label', 'Change character'); f.onclick = () => show('heroPage'); before.before(f); renderHeroes(); } }; // net.js：访客的加入界面上点头像选自己的形象
 })();

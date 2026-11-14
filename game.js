@@ -1401,7 +1401,17 @@
   };
   function renderBar() {
     for (let i = 0; i < slots.length; i++) if (slots[i] && !(inv[slots[i]] > 0)) slots[i] = 0; // 用完的物品从快捷栏消失（手里也跟着空）
-    bar.innerHTML = slots.map((id, i) => cell(id, i + 1)).join('') + `<button id="openBag" type="button" aria-label="Open bag" title="Bag (E)"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 9V6a5 5 0 0 1 10 0v3" fill="none" stroke="#f7d89d" stroke-width="3"/><rect x="6" y="8" width="20" height="22" rx="6" fill="#b98348" stroke="#f7d89d" stroke-width="1.5"/><path d="M7 15h18M11 11v7m10-7v7" stroke="#674327" stroke-width="2"/><rect x="11" y="20" width="10" height="7" rx="2" fill="#e5b875"/></svg></button>`; [...bar.children].slice(0,9).forEach((slot,i)=>{slot.dataset.slot=i;slot.setAttribute('role','button');slot.tabIndex=0;slot.setAttribute('aria-label',`Slot ${i+1}: ${itemName(slots[i]) || 'empty'}`);slot.setAttribute('aria-pressed',String(hotbarActive&&i===sel));}); if(hotbarActive)bar.children[sel].classList.add('on'); setHeld(hotbarActive?selectedItem():null); }
+    bar.innerHTML = slots.map((id, i) => cell(id, i + 1)).join('') + `<button id="openBag" type="button" aria-label="Open bag" title="Bag (E)"><svg viewBox="0 0 40 40" aria-hidden="true">
+<defs><linearGradient id="bagLeather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a08360"/><stop offset=".55" stop-color="#806344"/><stop offset="1" stop-color="#584531"/></linearGradient><linearGradient id="bagFlap" x2="0" y2="1"><stop stop-color="#b79b73"/><stop offset="1" stop-color="#8d704e"/></linearGradient></defs>
+<ellipse cx="20" cy="36" rx="13" ry="2" fill="#15171a" opacity=".4"/>
+<path d="M15 8V6c0-4 10-4 10 0v2" fill="none" stroke="#493d30" stroke-width="3"/><path d="M16 7V6c0-2 8-2 8 0v1" fill="none" stroke="#b49a75" stroke-width="1.2"/>
+<path d="M8 15 6 18v14l5 2m21-19 2 3v14l-5 2" fill="#665640" stroke="#352e29" stroke-width="1.2"/>
+<path d="M10 10Q20 6 30 10l2 22q0 4-5 4H13q-5 0-5-4Z" fill="url(#bagLeather)" stroke="#352e29" stroke-width="1.3"/>
+<path d="M10 11q10-4 20 0l1 8q-11 7-22 0Z" fill="url(#bagFlap)" stroke="#53432f" stroke-width="1"/>
+<path d="M12 12q8-3 16 0M11 18q9 5 18 0M11 25v7q0 1 2 1h14q2 0 2-1v-7" fill="none" stroke="#cfb893" stroke-opacity=".6" stroke-width=".7" stroke-dasharray="1.3 1.4"/>
+<path d="M17 17h6v15h-6Z" fill="#574536" stroke="#3b322a" stroke-width=".8"/>
+<rect x="17" y="23" width="6" height="5" rx=".8" fill="#b7aa87" stroke="#423d33" stroke-width=".8"/><rect x="18.4" y="24.2" width="3.2" height="2.6" rx=".3" fill="#584a37"/><path d="M20 24v3" stroke="#d3c3a0" stroke-width=".8"/>
+</svg></button>`; [...bar.children].slice(0,9).forEach((slot,i)=>{slot.dataset.slot=i;slot.setAttribute('role','button');slot.tabIndex=0;slot.setAttribute('aria-label',`Slot ${i+1}: ${itemName(slots[i]) || 'empty'}`);slot.setAttribute('aria-pressed',String(hotbarActive&&i===sel));}); if(hotbarActive)bar.children[sel].classList.add('on'); setHeld(hotbarActive?selectedItem():null); }
   function select(i,toggle=true) {
     const next=(i+9)%9;hotbarActive=!(toggle&&hotbarActive&&next===sel);sel=next;
     held=false;swing=0;digProgress=0;digKey='';miningFX.reset();$('prog').style.width='0px';
