@@ -36,9 +36,28 @@
   #stats { margin-top: 12px; font-size: 13px; line-height: 1.9; white-space: nowrap; }
   #stats b { color: #e0b878; font-weight: normal; margin-right: 6px; }
   #craft { width: 250px; max-height: 300px; overflow-y: auto; padding-right: 4px; }
-  #hp { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); width: 240px; height: 14px; background: #2b2233cc; border-radius: 7px; overflow: hidden; pointer-events: none; }
-  #hpfill { height: 100%; background: linear-gradient(#e2574c, #b83a32); transition: width .2s; }
-  #hptxt { position: absolute; inset: 0; text-align: center; font: 10px/14px ui-monospace, monospace; color: #fff; text-shadow: 0 0 2px #000; }
+  #hp { position:fixed;left:50%;bottom:76px;transform:translateX(-50%);width:calc(100vw - 32px);display:grid;grid-template-columns:35px 1fr 35px;align-items:end;pointer-events:none;font:12px system-ui; }
+  #hearts,#armorValue,#satiety { padding:5px;background:#292332dd;border:1px solid #9b886454;border-radius:12px; }
+  #hearts { display:flex;gap:4px;justify-self:center;grid-column:2;grid-row:1; }
+  .heart { position:relative;width:25px;height:25px;color:#63535b; }
+  .heart svg { width:25px;height:25px;display:block; }
+  .heart-fill { position:absolute;inset:0;overflow:hidden;color:#e45853;filter:drop-shadow(0 1px 1px #5e2424); }
+  #satiety { display:flex;flex-direction:column-reverse;gap:3px;align-items:center;grid-column:3;grid-row:1; }
+  .food-icon { position:relative;width:25px;height:25px;color:#635b50; }
+  .food-icon svg { width:25px;height:25px;display:block; }
+  .food-icon .food-fill { position:absolute;inset:0;overflow:hidden;color:#d9ad63;filter:drop-shadow(0 1px 1px #634426); }
+  #hp.hungry #satiety { animation:hunger-reminder 2.4s ease-in-out infinite; }
+  #hp.hungry .food-icon { color:#91654f; }
+  #hp.hungry .food-fill { color:#edaa64; }
+  @keyframes hunger-reminder { 0%,65%,100% { opacity:1;filter:none; } 80% { opacity:.48;filter:drop-shadow(0 0 3px #e8975e); } }
+  @media (prefers-reduced-motion:reduce) { #hp.hungry #satiety { animation:none;filter:drop-shadow(0 0 2px #e8975e); } }
+  #armorValue { display:flex;flex-direction:column-reverse;align-items:center;gap:3px;grid-column:1;grid-row:1; }
+  .shield { position:relative;width:25px;height:25px;color:#605b65; }
+  .shield svg { width:25px;height:25px;display:block; }
+  .shield-fill { position:absolute;inset:0;overflow:hidden;color:#b8cbdc;filter:drop-shadow(0 1px 1px #263542); }
+
+
+
   #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s; background: radial-gradient(transparent 40%, #c0201899); }
   #msg { position: fixed; left: 0; right: 0; top: 30%; text-align: center; font-size: 20px; color: #fff; text-shadow: 0 0 6px #000; pointer-events: none; }
   #craft button { display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 4px; padding: 4px 8px; background: #ffffff14; color: inherit; text-align: left; font-size: 13px; }
@@ -52,6 +71,7 @@
   #bar span { position: absolute; left: 3px; top: 0; font: 10px ui-monospace, monospace; color: #fff; text-shadow: 0 0 2px #000; }
   #menu, #bag { position: fixed; inset: 0; display: grid; place-items: center; background: #2b223366; }
   #menu.off, #bag.off { display: none; }
+  #bag, #bag * { cursor: default; } #bag button, #bag #grid div, #bag #hot div, #bag #equip div, #bag #chestGrid div[data-id] { cursor: pointer; } /* 背包开着时鼠标一定看得见 */
   #card, #bag > div { background: #fdf6ec; border-radius: 18px; padding: 24px 32px; max-width: 360px; box-shadow: 0 10px 40px #0004; }
   h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: 2px; color: #3d6b2c; }
   h1 small { font-size: 13px; color: #8a6a44; letter-spacing: 1px; }
@@ -211,7 +231,7 @@
 </div>
 <div id="prog"></div>
 <div id="label"></div>
-<div id="hp"><div id="hpfill"></div><div id="hptxt"></div></div>
+<div id="hp"><div id="armorValue" role="meter" aria-label="Armor" aria-valuemin="0" aria-valuemax="20"></div><div id="hearts" role="img" aria-label="Health"></div><div id="satiety" role="meter" aria-label="Satiety" aria-valuemin="0" aria-valuemax="100"></div></div>
 <div id="hurt"></div><div id="msg"></div>
 <div id="bag" class="off"><div id="sack"><button id="closeBag" type="button" aria-label="Close bag" title="Close bag">×</button>
   <section><h3>Character</h3><div id="equip"></div><div id="stats"></div></section>
@@ -313,7 +333,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- ponytail: 开发期每次加载都带时间戳，免得浏览器缓存旧脚本；定版后换回普通 script 标签 -->
 <script>const V = /^(localhost|127\.|192\.168\.|\[::1\])/.test(location.host) ? Date.now() : encodeURIComponent(document.lastModified); 
-const FILES = ['core.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'qr.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'farm.js', 'creative.js', 'avatar.js', 'backup.js', 'audio-test.js', 'bag-tabs.js', 'ranged.js']; __loadTotal(FILES.length);
+const FILES = ['core.js', 'survival.js', 'water-flow.js', 'water-material.js', 'foliage.js', 'world-lighting.js', 'mobile-controls.js', 'mining-rules.js', 'mob-physics.js', 'ladder-motion.js', 'shore-motion.js', 'metal-finish.js', 'natural-tools.js', 'item-art.js', 'natural-blocks.js', 'building-icons.js', 'hand-materials.js', 'first-person-hand.js', 'hand-motion.js', 'stone-pick.js', 'iron-pick.js', 'stone-tools.js', 'torch-tool.js', 'mining-fx.js', 'wick-materials.js', 'companion-motion.js', 'lang.js', 'settings-tabs.js', 'save-library.js', 'placed-torches.js', 'qr.js', 'net.js', 'combat-audio.js', 'game.js', 'home.js', 'farm.js', 'creative.js', 'avatar.js', 'backup.js', 'audio-test.js', 'bag-tabs.js', 'ranged.js']; __loadTotal(FILES.length);
 for (const f of FILES) document.write(`<script src="${f}?${V}"><\/script><script>__loadStep()<\/script>`);</script>
 </body>
 </html>

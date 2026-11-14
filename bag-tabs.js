@@ -3,17 +3,19 @@
 (() => {
   const $ = i => document.getElementById(i), sack = $('sack');
   if (!sack || !$('grid') || !$('equip') || !$('craft')) return;
-  const bag = $('grid').parentElement, who = $('equip').parentElement, items = $('craft').parentElement, KEY = 'stonisle.bagTab';
+  const bag = $('grid').parentElement, who = $('equip').parentElement, items = $('craft').parentElement;
   const side = document.createElement('div'); side.id = 'bagSide';
   side.innerHTML = '<div id="bagTabs" role="tablist" aria-label="Bag side panel"><button type="button" role="tab" data-t="items">Items</button><button type="button" role="tab" data-t="who">Character</button></div>';
   bag.classList.add('bagMain'); sack.append(bag, side); side.append(items, who);
+  let wasOpen = false;
   const show = t => {
     items.hidden = t !== 'items'; who.hidden = t === 'items';
     for (const b of side.querySelectorAll('[role=tab]')) b.setAttribute('aria-selected', String(b.dataset.t === t));
-    try { localStorage.setItem(KEY, t); } catch (e) { /* 记不住就算了 */ }
   };
   for (const b of side.querySelectorAll('[role=tab]')) b.onclick = () => show(b.dataset.t);
-  show(localStorage.getItem(KEY) === 'who' ? 'who' : 'items');
+  show('items');
+  // 每次打开背包都先看到物品页（生存模式是合成，创造模式是全部方块）；想看角色再点右边的标签
+  new MutationObserver(() => { if (!$('bag').classList.contains('off') && !$('bag').classList.contains('chest') && !wasOpen) show('items'); wasOpen = !$('bag').classList.contains('off'); }).observe($('bag'), { attributes: true, attributeFilter: ['class'] });
   // 角色页：装备格旁边放一张形象预览，穿上什么、手里拿着什么都画出来。game.js 每次重画背包都会重写 #equip，跟着它更新
   const row = document.createElement('div'), pic = document.createElement('img');
   row.id = 'whoRow'; pic.id = 'whoPic'; pic.alt = 'Your character';

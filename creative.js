@@ -3,7 +3,8 @@
 // 只管这块面板；game.js 在 renderBag 末尾调一次 Creative.render()。
 (() => {
   const KEY = 'stonisle.creative', STACK = 64, W = Core.WOODS;
-  let on = localStorage.getItem(KEY) === '1';
+  const guest = !!(window.Net && Net.guest); // 联机时只有房主能开创造模式；访客的开关是灰的，自己本机存的设置在别人的世界里不算
+  let on = !guest && localStorage.getItem(KEY) === '1';
   const each = f => W.map(f);
   const CATS = [ // 分类里没列到的方块自动归到 More，别的开发线新加方块也不会漏
     ['Nature', [1, 2, 3, 154, 155, 156, 157, 158, 4, 15, 7, 80, 81, 82]],
@@ -44,6 +45,7 @@
   world.insertAdjacentHTML('afterbegin', '<h2>Game mode</h2><label><input id="creative" type="checkbox"> Creative mode <small>(no damage, instant digging, blocks never run out; your bag shows every block and item)</small></label>');
   const box = document.getElementById('creative');
   box.checked = on;
-  box.onchange = () => { on = box.checked; localStorage.setItem(KEY, on ? '1' : '0'); };
+  if (guest) { box.disabled = true; box.closest('label').insertAdjacentHTML('beforeend', ' <small>Only the host can turn this on.</small>'); }
+  box.onchange = () => { if (guest) { box.checked = false; return; } on = box.checked; localStorage.setItem(KEY, on ? '1' : '0'); };
   window.Creative = { render, cats, get on() { return on; } };
 })();

@@ -7,24 +7,25 @@
   const HAIR = ['#2a2018', '#5a3a1e', '#a8743a', '#e0c070', '#c0502a', '#d8d8d8', '#4a78c8', '#c860a8'];
   const SHIRT = ['#c8483c', '#e08a2c', '#e0c040', '#58a84a', '#3c8ac8', '#6a58c0', '#c860a0', '#f0f0f0', '#404048'];
   const PANTS = ['#3a4a6a', '#4a3a2a', '#2e2e34', '#6a7a4a', '#8a6a4a', '#a8a8b0'];
-  const STYLE = ['short', 'long', 'ponytail', 'buns', 'none', 'spiky'], BOTTOM = ['pants', 'skirt'], SIZE = ['tall', 'kid'];
-  const OPTIONS = { skin: SKIN, style: STYLE, hair: HAIR, shirt: SHIRT, pants: PANTS, skirt: BOTTOM, size: SIZE };
-  const LABEL = { skin: 'Skin', style: 'Hair', hair: 'Hair color', shirt: 'Shirt', pants: 'Pants color', skirt: 'Bottom', size: 'Body' };
+  const STYLE = ['short', 'long', 'ponytail', 'buns', 'none', 'spiky', 'twin tails', 'bob', 'braid', 'side tail', 'curly', 'topknot', 'twin braids', 'hime'], BOTTOM = ['pants', 'skirt', 'dress'], SIZE = ['tall', 'kid'];
+  const ACC = ['none', 'bow', 'flowers', 'cap', 'sun hat', 'scarf', 'ahoge']; // 配饰：发结、花环、鸭舌帽、宽檐草帽、围巾（戴了头盔就不画头上的）
+  const OPTIONS = { skin: SKIN, style: STYLE, hair: HAIR, shirt: SHIRT, pants: PANTS, skirt: BOTTOM, size: SIZE, acc: ACC };
+  const LABEL = { skin: 'Skin', style: 'Hair', hair: 'Hair color', shirt: 'Shirt', pants: 'Pants color', skirt: 'Bottom', size: 'Body', acc: 'Extra' };
   // 六个现成的角色，开局界面上选一个（之后还能在设置里随便改）。名字只是称呼，不绑定性别以外的任何东西
   const HEROES = [
-    { name: 'Niko', look: { skin: 1, style: 0, hair: 1, shirt: 4, pants: 0, skirt: 0 } },
-    { name: 'Kai', look: { skin: 3, style: 5, hair: 0, shirt: 3, pants: 1, skirt: 0 } },
-    { name: 'Theo', look: { skin: 0, style: 0, hair: 3, shirt: 1, pants: 5, skirt: 0 } },
-    { name: 'Luna', look: { skin: 1, style: 1, hair: 0, shirt: 5, pants: 2, skirt: 1 } },
-    { name: 'Ivy', look: { skin: 4, style: 3, hair: 0, shirt: 2, pants: 3, skirt: 0 } },
-    { name: 'Nora', look: { skin: 0, style: 2, hair: 4, shirt: 6, pants: 0, skirt: 1 } },
+    { name: 'Niko', look: { skin: 1, style: 0, hair: 1, shirt: 4, pants: 0, skirt: 0, acc: 6 } },
+    { name: 'Kai', look: { skin: 3, style: 5, hair: 0, shirt: 3, pants: 1, skirt: 0, acc: 5 } },
+    { name: 'Theo', look: { skin: 0, style: 0, hair: 3, shirt: 1, pants: 5, skirt: 0, acc: 3 } },
+    { name: 'Luna', look: { skin: 1, style: 13, hair: 0, shirt: 5, pants: 0, skirt: 1, acc: 1 } },
+    { name: 'Ivy', look: { skin: 4, style: 10, hair: 0, shirt: 2, pants: 3, skirt: 1 } },
+    { name: 'Nora', look: { skin: 0, style: 12, hair: 4, shirt: 6, pants: 0, skirt: 2, acc: 4 } },
     // 六个小孩：个子矮一截、头大一点
-    { name: 'Leo', look: { skin: 1, style: 5, hair: 2, shirt: 0, pants: 0, skirt: 0, size: 1 } },
+    { name: 'Leo', look: { skin: 1, style: 5, hair: 2, shirt: 0, pants: 0, skirt: 0, size: 1, acc: 3 } },
     { name: 'Sam', look: { skin: 4, style: 0, hair: 0, shirt: 2, pants: 2, skirt: 0, size: 1 } },
     { name: 'Ben', look: { skin: 2, style: 0, hair: 4, shirt: 7, pants: 4, skirt: 0, size: 1 } },
-    { name: 'Mia', look: { skin: 2, style: 3, hair: 1, shirt: 6, pants: 5, skirt: 1, size: 1 } },
-    { name: 'Zoe', look: { skin: 5, style: 2, hair: 0, shirt: 3, pants: 0, skirt: 0, size: 1 } },
-    { name: 'Lily', look: { skin: 0, style: 1, hair: 3, shirt: 4, pants: 3, skirt: 1, size: 1 } },
+    { name: 'Mia', look: { skin: 2, style: 3, hair: 1, shirt: 6, pants: 5, skirt: 1, size: 1, acc: 1 } },
+    { name: 'Zoe', look: { skin: 5, style: 6, hair: 0, shirt: 3, pants: 0, skirt: 2, size: 1 } },
+    { name: 'Lily', look: { skin: 0, style: 9, hair: 3, shirt: 4, pants: 3, skirt: 2, size: 1, acc: 2 } },
   ];
   // 装备穿在身上的颜色：[主色, 深色]。没列到的装备用灰色
   const TIER = { straw: ['#c9b25a', '#948038'], leather: ['#9a6a3e', '#74502e'], iron: ['#cdd6e2', '#8f9cac'], alloy: ['#e6c27a', '#a8803a'] };
@@ -38,7 +39,7 @@
 
   function build(lk, gear = []) { // gear：[头, 身, 脚, 腿] 的物品 id，和 game.equip 同序
     const l = clean(lk), g = new THREE.Group(), [head, body, feet, legsGear] = gear.map(id => GEAR[id] || (id ? ['#8a8a9a', '#6a6a78'] : null));
-    const shade = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString();
+    const shade = (c, k) => '#' + new THREE.Color(c).multiplyScalar(k).getHexString(), tint = (c, k) => '#' + new THREE.Color(c).lerp(new THREE.Color('#ffffff'), k).getHexString(); // 调暗 / 调亮
     const part = (w, h, d, x, y, z, col, to = g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: col })); m.position.set(x, y, z); to.add(m); return m; };
     // Use the exact same material and construction details as the inventory model.
     const wear = (id,w,h,d,x,y,z,col,to=g) => {
@@ -49,10 +50,12 @@
     };
     const pivot = (x, y) => { const p = new THREE.Group(); p.position.set(x, y, 0); g.add(p); return p; };
     const skin = SKIN[l.skin], hair = HAIR[l.hair], shirt = body ? body[0] : SHIRT[l.shirt], pants = legsGear ? legsGear[0] : PANTS[l.pants], shoe = feet ? feet[0] : '#3a2e26';
+    const gown = !legsGear && BOTTOM[l.skirt] !== 'pants', legCol = gown ? skin : pants; // 穿裙子：腿露出来是肤色（穿了护腿就照护腿画，不画裙子）
     const leg = x => { // 以胯为轴：大腿、小腿（略深）、鞋（鞋头向前伸出一点）
       const p = pivot(x, 0.72);
-      wear(gear[3],0.21, 0.34, 0.23, 0, -0.17, 0, pants, p); wear(gear[3],0.19, 0.24, 0.21, 0, -0.46, 0, shade(pants, 0.86), p);
+      wear(gear[3],0.21, 0.34, 0.23, 0, -0.17, 0, legCol, p); wear(gear[3],0.19, 0.24, 0.21, 0, -0.46, 0, shade(legCol, gown ? 0.95 : 0.86), p);
       wear(gear[2],0.22, 0.14, 0.3, 0, -0.65, -0.03, shoe, p); wear(gear[2],0.22, 0.04, 0.3, 0, -0.7, -0.03, shade(shoe, 0.7), p);
+      if (gown && !feet) { part(0.2, 0.09, 0.22, 0, -0.545, 0, '#f4f1ea', p); part(0.21, 0.025, 0.23, 0, -0.5, 0, tint(shirt, 0.25), p); } // 穿裙子配一双白短袜，袜口一道和上衣同色的边
       return p;
     };
     const arm = x => { // 以肩为轴：袖子、前臂（没穿护甲露出皮肤）、手
@@ -65,8 +68,30 @@
     wear(gear[1],0.48, 0.62, 0.26, 0, 1.07, 0, shirt);                                                  // 躯干
     wear(gear[1],0.5, 0.07, 0.28, 0, 0.78, 0, body ? body[1] : shade(pants, 0.7));                      // 腰带 / 护甲下摆
     if (body) { /* Shared chest construction already includes plates / stitching. */ }                                   // 胸甲的护心片
-    else { part(0.2, 0.05, 0.02, 0, 1.35, -0.135, shade(shirt, 0.75)); part(0.04, 0.3, 0.02, 0, 1.2, -0.135, shade(shirt, 0.82)); } // 领口和门襟
-    if (BOTTOM[l.skirt] === 'skirt' && !legsGear) { part(0.52, 0.16, 0.3, 0, 0.68, 0, pants); part(0.58, 0.14, 0.34, 0, 0.55, 0, shade(pants, 0.9)); } // 裙子：腰下张开的两层
+    else if (BOTTOM[l.skirt] === 'dress') { // 连衣裙的上身：白色小翻领，胸口一个蝴蝶结，袖口一圈白边
+      for (const x of [-0.07, 0.07]) part(0.11, 0.06, 0.03, x, 1.345, -0.135, '#f4f1ea');
+      for (const x of [-0.045, 0.045]) part(0.07, 0.06, 0.025, x, 1.27, -0.14, tint(shirt, 0.45)); part(0.035, 0.045, 0.03, 0, 1.27, -0.142, shade(shirt, 0.7));
+      for (const pv of [swing[2], swing[3]]) part(0.19, 0.03, 0.23, 0, -0.275, 0, '#f4f1ea', pv);
+    }
+    else { // 普通上衣：领口、门襟、三颗扣子、一只胸袋、下摆一道深色边
+      part(0.2, 0.05, 0.02, 0, 1.35, -0.135, shade(shirt, 0.75)); part(0.04, 0.3, 0.02, 0, 1.2, -0.135, shade(shirt, 0.82));
+      for (const y of [1.28, 1.19, 1.1]) part(0.025, 0.025, 0.02, 0, y, -0.146, tint(shirt, 0.6));
+      part(0.11, 0.1, 0.02, 0.13, 1.16, -0.135, shade(shirt, 0.86)); part(0.11, 0.02, 0.022, 0.13, 1.2, -0.136, shade(shirt, 0.68));
+      part(0.49, 0.03, 0.27, 0, 0.835, 0, shade(shirt, 0.8));
+    }
+    if (gown) { // 裙子：从腰往下一层比一层宽，盖到膝盖；前后都有百褶，裙摆镶浅边，后腰一个蝴蝶结。连衣裙和上衣一个颜色、再长一层
+      const dress = BOTTOM[l.skirt] === 'dress', col = dress ? shirt : pants, tiers = dress ? 4 : 3;
+      for (let i = 0; i < tiers; i++) {
+        const w = 0.52 + i * 0.07, d = 0.34 + i * 0.07, y = 0.7 - i * 0.12; // 前后也放宽：走路时腿在裙子里面摆，不会穿出来
+        part(w, 0.125, d, 0, y, 0, shade(col, i % 2 ? 0.92 : 1));
+        for (let k = 0; k < 5; k++) for (const sz of [-1, 1]) part(0.035, 0.125, 0.012, (k - 2) * w / 5.4, y, sz * (d / 2 + 0.004), shade(col, 0.78)); // 百褶
+      }
+      const hw = 0.52 + (tiers - 1) * 0.07, hd = 0.34 + (tiers - 1) * 0.07, hy = 0.7 - (tiers - 1) * 0.12 - 0.075;
+      part(hw + 0.03, 0.035, hd + 0.03, 0, hy, 0, tint(col, 0.45));                                             // 裙摆的浅边
+      part(0.51, 0.045, 0.29, 0, 0.775, 0, dress ? tint(col, 0.35) : shade(col, 0.7));                           // 腰带
+      for (const x of [-0.075, 0.075]) part(0.12, 0.09, 0.04, x, 0.78, 0.165, tint(col, 0.3)); part(0.05, 0.06, 0.05, 0, 0.78, 0.17, shade(col, 0.75)); // 后腰的蝴蝶结
+      for (const x of [-0.05, 0.05]) part(0.05, 0.16, 0.03, x, 0.68, 0.19, tint(col, 0.3));                      // 蝴蝶结垂下来的两条带子
+    }
     part(0.16, 0.08, 0.16, 0, 1.41, 0, shade(skin, 0.92));                                      // 脖子
     part(0.4, 0.4, 0.4, 0, 1.64, 0, skin);
     for (const x of [-0.09, 0.09]) {
@@ -79,20 +104,64 @@
     part(0.12, 0.03, 0.02, 0, 1.535, -0.203, '#9a5a4a');                                        // 嘴
     if (head) { wear(gear[0],0.46, 0.18, 0.46, 0, 1.8, 0, head[0]); wear(gear[0],0.48, 0.06, 0.48, 0, 1.71, 0, head[1]); wear(gear[0],0.3, 0.05, 0.12, 0, 1.72, -0.27, head[1]); } // 帽子：帽顶、帽圈、帽檐；戴着就不画头发
     else if (STYLE[l.style] !== 'none') {
-      part(0.44, 0.12, 0.44, 0, 1.86, 0, hair); part(0.44, 0.22, 0.1, 0, 1.73, 0.19, hair);    // 头顶和后脑
-      part(0.4, 0.07, 0.04, 0, 1.79, -0.2, hair); part(0.14, 0.06, 0.04, -0.12, 1.75, -0.2, hair); // 刘海
-      for (const x of [-0.205, 0.205]) part(0.05, 0.18, 0.3, x, 1.75, 0.06, hair);              // 两鬓
-      if (STYLE[l.style] === 'long') { part(0.44, 0.36, 0.1, 0, 1.46, 0.2, hair); for (const x of [-0.205, 0.205]) part(0.05, 0.3, 0.14, x, 1.52, 0.12, hair); }
-      if (STYLE[l.style] === 'ponytail') { part(0.12, 0.12, 0.12, 0, 1.78, 0.28, shade(hair, 0.8)); part(0.1, 0.36, 0.1, 0, 1.56, 0.32, hair); }
-      if (STYLE[l.style] === 'buns') for (const x of [-0.16, 0.16]) part(0.16, 0.16, 0.16, x, 1.97, 0.04, hair);
-      if (STYLE[l.style] === 'spiky') for (const [x, z] of [[-0.12, -0.1], [0.1, -0.06], [0, 0.1], [-0.14, 0.14], [0.15, 0.12]]) part(0.09, 0.12, 0.09, x, 1.97, z, hair);
+      // 头发不再是几块大方砖：一顶贴头的发帽，额前一排尖尖的刘海，两鬓垂下来的细发，后面分层、发梢收尖，头顶一道高光。
+      // 辫子和马尾一节一节往下变细。每一缕是一个可以歪一点的小长条（lock），所以看起来有发丝的走向。
+      const st = STYLE[l.style], hi = tint(hair, 0.28), lo = shade(hair, 0.8), tie = tint(shirt, 0.15);
+      const lock = (w, h, d, x, y, z, col = hair, rx = 0, rz = 0) => { const m = part(w, h, d, x, y, z, col); m.rotation.set(rx, 0, rz); m.userData.hair = true; return m; };
+      lock(0.43, 0.07, 0.43, 0, 1.885, 0); lock(0.47, 0.1, 0.47, 0, 1.815, 0.004);                         // 发帽：顶上小一圈、下面大一圈，轮廓是圆的
+      lock(0.47, 0.22, 0.09, 0, 1.69, 0.2); for (const x of [-0.215, 0.215]) lock(0.06, 0.2, 0.3, x, 1.72, 0.06); // 后脑和两侧
+      lock(0.26, 0.012, 0.045, -0.02, 1.924, -0.09, hi); lock(0.1, 0.012, 0.04, 0.1, 1.924, -0.02, hi);     // 头顶的高光
+      const fringe = st === 'hime' ? [] : st === 'spiky' ? [[-0.17, 0.3], [-0.085, -0.25], [0, 0.35], [0.085, -0.3], [0.17, 0.25]] : [[-0.17, 0.16], [-0.09, -0.1], [-0.01, 0.12], [0.07, -0.14], [0.155, -0.2]];
+      for (const [x, rz] of fringe) { lock(0.09, 0.085, 0.035, x, 1.772, -0.218); lock(0.055, 0.075, 0.03, x + rz * 0.07, 1.712, -0.221, shade(hair, 0.93), 0, rz); } // 刘海：每一缕上宽下尖，方向交错
+      const framing = !['short', 'spiky', 'topknot', 'hime'].includes(st);
+      if (framing) for (const sx of [-1, 1]) { lock(0.05, 0.26, 0.05, sx * 0.205, 1.6, -0.165, hair, 0, sx * 0.05); lock(0.034, 0.09, 0.034, sx * 0.198, 1.435, -0.165, lo, 0, sx * 0.12); } // 两鬓垂到下巴的细发
+      const tail = (n, x, y, z, w, sx = 0, dz = 0.012, drop = 0.112) => { // 一条往下变细的发束：n 节，深浅相间，sx 往外撇
+        for (let k = 0; k < n; k++) lock(w - k * 0.016, drop + 0.012, w - 0.01 - k * 0.014, x + sx * k * 0.024, y - k * drop, z + k * dz, k % 2 ? lo : hair, 0.1, -sx * 0.14);
+        lock(0.045, 0.07, 0.045, x + sx * n * 0.024, y - n * drop + 0.02, z + n * dz, lo, 0.1, -sx * 0.2);
+      };
+      const braid = (n, x, y, z, dz = 0) => { // 一条麻花辫：一节宽一节窄、左右错开，辫梢扎一个结，再留一撮
+        for (let k = 0; k < n; k++) lock(k % 2 ? 0.085 : 0.108, 0.078, 0.088, x + (k % 2 ? 0.013 : -0.013), y - k * 0.072, z + k * dz, k % 2 ? lo : hair);
+        lock(0.095, 0.045, 0.095, x, y - n * 0.072, z + n * dz, tie); lock(0.06, 0.07, 0.06, x, y - n * 0.072 - 0.055, z + n * dz, hair);
+      };
+      if (st === 'short') for (const x of [-0.13, 0, 0.13]) lock(0.1, 0.085, 0.05, x, 1.555, 0.205, lo, 0.25);                 // 短发：后颈几缕翘起的发梢
+      if (st === 'spiky') { // 刺猬头：一圈往外炸开的尖刺，根粗尖细
+        for (const [x, z, rx, rz] of [[-0.14, -0.12, -0.35, 0.35], [0.02, -0.14, -0.45, -0.05], [0.15, -0.1, -0.3, -0.4], [-0.17, 0.04, 0, 0.5], [0.18, 0.05, 0, -0.5], [-0.1, 0.15, 0.4, 0.25], [0.06, 0.17, 0.5, -0.1], [0, 0.02, 0, 0.1]]) {
+          lock(0.1, 0.11, 0.1, x, 1.955, z, hair, rx, rz); lock(0.058, 0.1, 0.058, x - rz * 0.07, 2.04, z + rx * 0.07, hi, rx, rz);
+        }
+        for (const x of [-0.13, 0, 0.13]) lock(0.09, 0.08, 0.05, x, 1.56, 0.205, lo, 0.3);
+      }
+      if (st === 'long' || st === 'hime') { // 长发：后面三层垂到腰，一层比一层窄，发梢分成几缕
+        lock(0.47, 0.3, 0.09, 0, 1.47, 0.21); lock(0.44, 0.28, 0.085, 0, 1.2, 0.215, shade(hair, 0.93)); lock(0.4, 0.14, 0.08, 0, 1.0, 0.215, lo);
+        for (const [x, rz] of [[-0.15, 0.1], [-0.05, -0.06], [0.05, 0.06], [0.15, -0.1]]) lock(0.075, 0.11, 0.06, x, 0.89, 0.215, hair, 0, rz);
+        if (st === 'long') for (const sx of [-1, 1]) tail(3, sx * 0.225, 1.5, 0.03, 0.075, sx * 0.3, -0.01);
+      }
+      if (st === 'hime') { lock(0.41, 0.105, 0.035, 0, 1.752, -0.218); lock(0.41, 0.02, 0.036, 0, 1.692, -0.219, lo); for (const sx of [-1, 1]) { lock(0.075, 0.3, 0.11, sx * 0.205, 1.57, -0.13); lock(0.076, 0.02, 0.111, sx * 0.205, 1.415, -0.13, lo); } } // 公主切：齐刘海，脸两边各一段齐下巴的直发
+      if (st === 'ponytail') { lock(0.13, 0.1, 0.12, 0, 1.83, 0.27, tie); lock(0.15, 0.12, 0.13, 0, 1.8, 0.33); tail(4, 0, 1.69, 0.36, 0.13, 0, -0.008); }      // 高马尾：发绳、鼓起来的一截，再垂下去
+      if (st === 'side tail') { lock(0.1, 0.1, 0.11, 0.25, 1.84, 0.03, tie); lock(0.14, 0.12, 0.13, 0.3, 1.8, 0.04); tail(4, 0.33, 1.69, 0.04, 0.12, 0.6, 0); }  // 侧马尾
+      if (st === 'twin tails') for (const sx of [-1, 1]) { lock(0.09, 0.09, 0.11, sx * 0.25, 1.81, 0.09, tie); lock(0.13, 0.1, 0.12, sx * 0.29, 1.77, 0.1); tail(5, sx * 0.31, 1.66, 0.11, 0.125, sx, 0.006); } // 双马尾：往两边撇开，垂到腰
+      if (st === 'buns') for (const sx of [-1, 1]) { lock(0.18, 0.15, 0.18, sx * 0.17, 1.985, 0.03); lock(0.11, 0.03, 0.11, sx * 0.17, 2.065, 0.03, hi); lock(0.19, 0.035, 0.19, sx * 0.17, 1.915, 0.03, tie); tail(2, sx * 0.25, 1.72, 0.13, 0.07, sx * 0.4, 0); } // 丸子头：两个团子，下面系着发带，再各垂一小缕
+      if (st === 'bob') { lock(0.48, 0.26, 0.1, 0, 1.59, 0.2); for (const sx of [-1, 1]) { lock(0.065, 0.3, 0.37, sx * 0.218, 1.62, 0.03); lock(0.06, 0.05, 0.3, sx * 0.2, 1.465, 0.03, lo); } lock(0.44, 0.05, 0.085, 0, 1.455, 0.19, lo); } // 波波头：齐下巴一圈，发梢往里扣
+      if (st === 'braid') braid(7, 0, 1.66, 0.275);                                                                                 // 麻花辫：背后一根
+      if (st === 'twin braids') for (const sx of [-1, 1]) { lock(0.09, 0.07, 0.09, sx * 0.22, 1.52, -0.02); braid(6, sx * 0.225, 1.45, -0.05, -0.014); } // 双麻花辫：从耳后垂到胸前
+      if (st === 'curly') { lock(0.53, 0.13, 0.53, 0, 1.895, 0); for (const sx of [-1, 1]) lock(0.1, 0.3, 0.42, sx * 0.245, 1.7, 0.03); lock(0.51, 0.36, 0.12, 0, 1.64, 0.235);
+        for (const [x, y, z] of [[-0.17, 1.99, -0.13], [0.14, 2.0, -0.09], [0, 2.0, 0.1], [-0.19, 1.98, 0.15], [0.2, 1.98, 0.13], [-0.29, 1.58, 0.17], [0.29, 1.58, 0.17], [-0.28, 1.84, -0.05], [0.28, 1.84, -0.05], [0, 1.47, 0.28]]) lock(0.13, 0.11, 0.13, x, y, z, shade(hair, 0.93), 0.3, 0.3); } // 卷发：蓬蓬的一大团，一个个小卷
+      if (st === 'topknot') { lock(0.2, 0.045, 0.2, 0, 1.94, 0.02, tie); lock(0.18, 0.15, 0.18, 0, 2.02, 0.02); lock(0.1, 0.03, 0.1, 0, 2.1, 0.02, hi); for (const x of [-0.13, 0, 0.13]) lock(0.09, 0.08, 0.05, x, 1.56, 0.205, lo, 0.25); } // 丸子头（一个）
+    }
+    const accessory = ACC[l.acc] || 'none', straw = '#e8d08a';
+    if (accessory === 'scarf') { part(0.34, 0.1, 0.32, 0, 1.415, 0, tint(shirt, 0.5)); part(0.11, 0.26, 0.05, 0.1, 1.27, -0.155, tint(shirt, 0.5)); part(0.11, 0.035, 0.052, 0.1, 1.17, -0.156, shade(shirt, 0.8)); } // 围巾：绕脖子一圈，胸前垂一截
+    if (!head) {
+      if (accessory === 'ahoge') { const a = part(0.03, 0.13, 0.03, 0.03, 1.985, -0.04, hair), b = part(0.03, 0.09, 0.03, 0.085, 2.055, -0.04, hair); a.rotation.z = -0.45; b.rotation.z = -1.25; a.userData.hair = b.userData.hair = true; } // 呆毛：头顶翘起来弯一下的一撮
+      if (accessory === 'bow') { for (const x of [-0.08, 0.08]) part(0.13, 0.11, 0.06, 0.1 + x, 1.95, 0.1, '#e8486a'); part(0.06, 0.07, 0.07, 0.1, 1.95, 0.1, '#b82e50'); } // 发结：头顶偏一侧的大蝴蝶结
+      if (accessory === 'flowers') { part(0.46, 0.035, 0.46, 0, 1.9, 0, '#5c9a48'); [[-0.2, -0.2], [0, -0.23], [0.2, -0.2], [0.23, 0], [0.2, 0.2], [0, 0.23], [-0.2, 0.2], [-0.23, 0]].forEach(([x, z], i) => { part(0.09, 0.07, 0.09, x, 1.92, z, ['#f08ab0', '#f4d24a', '#ffffff', '#b890e8'][i % 4]); part(0.035, 0.075, 0.035, x, 1.925, z, '#f0b030'); }); } // 花环：一圈小花
+      if (accessory === 'cap') { part(0.45, 0.13, 0.45, 0, 1.915, 0, shade(shirt, 0.85)); part(0.32, 0.03, 0.2, 0, 1.87, -0.3, shade(shirt, 0.65)); part(0.07, 0.03, 0.07, 0, 1.99, 0, tint(shirt, 0.4)); part(0.14, 0.07, 0.02, 0, 1.92, -0.227, tint(shirt, 0.5)); } // 鸭舌帽：帽顶、帽檐、顶扣、前面一块徽标
+      if (accessory === 'sun hat') { part(0.8, 0.03, 0.8, 0, 1.885, 0, straw); part(0.42, 0.15, 0.42, 0, 1.97, 0, straw); part(0.44, 0.05, 0.44, 0, 1.92, 0, tint(shirt, 0.1)); part(0.1, 0.12, 0.03, 0.12, 1.86, 0.235, tint(shirt, 0.1)); } // 宽檐草帽：一圈丝带，后面垂一小截
     }
     if (SIZE[l.size] === 'kid') { // 小孩：整体缩到 78%，脖子以上再放大 25%
       const hg = new THREE.Group(); hg.position.set(0, 1.44, 0);
-      for (const c of [...g.children]) if ((c.isMesh || c.userData.gearPart) && c.position.y > 1.45) { c.position.y -= 1.44; hg.add(c); }
+      for (const c of [...g.children]) if ((c.isMesh || c.userData.gearPart) && (c.position.y > 1.45 || c.userData.hair)) { c.position.y -= 1.44; hg.add(c); }
       hg.scale.setScalar(1.25); g.add(hg); g.scale.setScalar(0.78);
     }
-    g.userData.swing = swing;
+    g.userData.swing = swing; g.userData.gown = gown;
     return g;
   }
   function colors(lk, gear = []) { const l = clean(lk), body = GEAR[gear[1]] || (gear[1] ? ['#8a8a9a'] : null); return { skin: SKIN[l.skin], sleeve: body ? body[0] : SHIRT[l.shirt] }; }
@@ -108,7 +177,7 @@
   }
   // 摆姿势。phase 动作的相位，walk 0–1 走路的幅度，swing 0–1 右手挥动的进度（0 = 没在挥），air 在空中，swim 在水里
   function pose(g, phase, walk = 0, swing = 0, air = false, swim = false) {
-    const [legL, legR, armL, armR] = g.userData.swing, s = Math.sin(phase) * 0.7 * walk, k = Math.sin(phase);
+    const [legL, legR, armL, armR] = g.userData.swing, s = Math.sin(phase) * 0.7 * walk, k = Math.sin(phase), stride = g.userData.gown ? 0.36 : 1; // 穿裙子：步子迈小一点，腿留在裙子里
     g.rotation.order = 'YXZ'; g.rotation.x = 0;                                  // 踩水保持直立，与站立碰撞体一致，避免头部绕脚底旋进岸墙
     const u = g.userData; if (swing > 0 && !(swing >= (u.lastSw || 0) && u.lastSw > 0)) u.flip = !u.flip; u.lastSw = swing; // 每挥一下换一个方向：右到左、左到右交替
     armR.rotation.order = 'YXZ'; armR.rotation.y = 0; armL.rotation.y = 0; // 端着远程武器时两臂会往里收，别的姿势要归零
@@ -118,7 +187,7 @@
       armR.rotation.x = -0.25 - k * 0.15; armR.rotation.z = 0;
       return;
     }
-    legL.rotation.x = air ? -0.55 : s; legR.rotation.x = air ? 0.35 : -s;                       // 跳起：两腿一前一后收起
+    legL.rotation.x = (air ? -0.55 : s) * stride; legR.rotation.x = (air ? 0.35 : -s) * stride;                       // 跳起：两腿一前一后收起
     armL.rotation.x = air ? 2.6 : -s; armL.rotation.z = air ? -0.25 : 0;                       // 跳起：双臂上举
     if (u.ranged && !air) { // 远程武器：一直端着瞄准，不挥砍。三种姿势不一样
       if (swing > 0 && !(u.shot > 0)) u.shotAt = performance.now(); u.shot = swing;                    // 刚射出去的那一刻

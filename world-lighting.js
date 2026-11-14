@@ -6,6 +6,7 @@
   // 灯照亮周围是烘在网格里的（geometry() 里按距离给每个顶点一个 blockGlow），不靠实时光源，灯再多也不费显卡。
   // lampDay：露天的地方白天把这份灯光压到 25%，免得大太阳下灯旁边发白；有屋顶的地方（室内、洞里）始终全亮。
   const LAMP_DAY={value:1};
+  const SPREAD=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1],[2,0],[-2,0],[0,2],[0,-2],[3,0],[-3,0],[0,3],[0,-3]].map(([x,z])=>[x,z,Math.hypot(x,z)<1.1?.55:Math.hypot(x,z)<1.5?.45:Math.abs(x)+Math.abs(z)===2?.32:.2]); // 旁边露天的地方散进来多少光：贴着 55%，斜对角 45%，隔一格 32%，隔两格 20%
   function decorate(material,exposure=null){
     const previous=material.onBeforeCompile,cache=material.customProgramCacheKey.bind(material);
     material.onBeforeCompile=function(shader,renderer){
@@ -47,16 +48,21 @@
       this.lampChunks.set(cx+','+cz,positions);
     }
     drop(cx,cz){this.lampChunks.delete(cx+','+cz);}
-    skyAt(x,y,z){
-      for(let h=Math.max(0,Math.ceil(y));h<64;h++){const b=this.world.get(Math.floor(x),h,Math.floor(z));if(!clear(b))return .015;}
-      return 1;
+    // 头顶有遮挡的地方不是一片死黑：旁边 3 格内只要有露天的地方，就有散进来的天光，离得越近越亮。
+    // 树枝下、屋檐下、门口里面都还看得清；真正的室内深处和洞里四周都被挡住，才是全黑（.015）。
+    roofAt(x,z){for(let y=63;y>=0;y--)if(!clear(this.world.get(x,y,z)))return y;return -1;}
+    shade(x,y,z,roof=(a,b)=>this.roofAt(a,b)){
+      if(y>=roof(x,z)+1)return 1;
+      for(const [dx,dz,k] of SPREAD)if(y>=roof(x+dx,z+dz)+1)return k; // SPREAD 从近到远排，第一个露天的就是最亮的
+      return .015;
     }
+    skyAt(x,y,z){return this.shade(Math.floor(x),Math.max(0,Math.ceil(y)),Math.floor(z));}
     geometry(geo,cx,cz,solid=false){
       const p=geo.attributes.position,n=geo.attributes.normal,values=new Float32Array(p.count),roofs=new Map();
+      const roofOf=(x,z)=>{const key=x+','+z;let r=roofs.get(key);if(r===undefined){r=this.roofAt(x,z);roofs.set(key,r);}return r;}; // 每一列的屋顶高度只查一次
       for(let i=0;i<p.count;i++){
         const x=Math.floor(p.getX(i)+cx*16+n.getX(i)*.025),z=Math.floor(p.getZ(i)+cz*16+n.getZ(i)*.025),key=x+','+z;
-        if(!roofs.has(key)){let roof=-1;for(let y=63;y>=0;y--){const b=this.world.get(x,y,z);if(!clear(b)){roof=y;break;}}roofs.set(key,roof);}
-        values[i]=p.getY(i)+n.getY(i)*.025>=roofs.get(key)+1?1:.015;
+        values[i]=this.shade(x,p.getY(i)+n.getY(i)*.025,z,roofOf);
       }
       geo.setAttribute('skyAccess',new THREE.BufferAttribute(values,1));
       const glow=new Float32Array(p.count);

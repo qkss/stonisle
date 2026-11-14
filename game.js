@@ -78,6 +78,9 @@
   }
   const rangedReview=materialPreview&&new URLSearchParams(location.search).get('rangedreview')==='1';
   if(rangedReview){save.slots=[261,262,263,264,265,266,267,158,3];save.inv=Object.fromEntries(save.slots.map(id=>[id,64]));}
+  const survivalReview=materialPreview&&new URLSearchParams(location.search).get('survivalreview');
+  if(survivalReview){save.hp=survivalReview==='starve'?1:15;save.hunger={value:survivalReview==='starve'?0:12,starve:survivalReview==='starve'?4:0};save.slots=[177,273,32,0,0,0,0,0,0];save.inv={177:5,273:5,32:5};}
+  if(materialPreview&&new URLSearchParams(location.search).get('armorreview')==='1'){save.equip=[43,44,45,126];save.hunger={value:52};save.hp=15;save.inv={40:1};}
   const blockDamage = new MiningRules.DamageStore(save.mining);
   if(waterPreview){
     save.pos=[12.5,35,16.5,.46,-.30];
@@ -123,6 +126,8 @@
   const PARTS = ['head', 'body', 'feet', 'legs'], PART_ORDER = [0, 1, 3, 2], MAXHP = 20; // 界面上按 头、身、腿、脚 排
   const equip = save.equip || [0, 0, 0, 0]; while (equip.length < 4) equip.push(0);
   let hp = save.hp || MAXHP;
+  const hunger=new Survival.Hunger(save.hunger);
+  let survivalSaveT=0,survivalDisplay=-1;
   const armor = () => equip.reduce((a, id) => a + (id ? ARMOR[id][1] : 0), 0);
   const itemName = id => Lang.item(id); // 游戏内一律英文名，见 lang.js
   const isBlock = id => !!BLOCKS[id];           // 1–15 和 50–59 是方块
@@ -177,7 +182,7 @@
   function saveNow() {
     clearTimeout(saveTimer); saveTimer = 0;
     if (materialPreview || !hasStarted || (window.Net && Net.guest)) return; // 访客不写世界存档
-    try { saveLibrary.save(selectedSave, { edits: world.edits, torches: placedTorches.records, water: waterFlow.cells, mining: blockDamage.records, pos: [p.x, p.y, p.z, yaw, pitch], sel, hotbarActive, view: R, hq, pack, inv, slots, time, hp, equip }); }
+    try { saveLibrary.save(selectedSave, { edits: world.edits, torches: placedTorches.records, water: waterFlow.cells, mining: blockDamage.records, pos: [p.x, p.y, p.z, yaw, pitch], sel, hotbarActive, view: R, hq, pack, inv, slots, time, hp, hunger:hunger.toJSON(), equip }); }
     catch (e) { console.warn('存档失败', e); }
   }
   const saveSoon = () => { if (!saveTimer) saveTimer = setTimeout(saveNow, 400); };
@@ -642,7 +647,23 @@
   const keys = {}, touchKeys = {}, touchMove = {x:0,forward:0};
   const pressed = code => keys[code] || touchKeys[code];
   let fallFrom = p.y, regenT = 0;
-  function renderHP() { $('hpfill').style.width = hp / MAXHP * 100 + '%'; $('hptxt').textContent = `HP ${Math.ceil(hp)}/${MAXHP} · Armor ${armor()}`; }
+  function renderHP() {
+    const heart='<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21 3.1 12.4C-2 7.3 4.7-.3 10 4.8L12 7l2-2.2C19.3-.3 26 7.3 20.9 12.4Z"/></svg>';
+    $('hearts').innerHTML=Array.from({length:Math.ceil(MAXHP/10)},(_,i)=>'<span class="heart">'+heart+'<span class="heart-fill" style="width:'+Math.max(0,Math.min(100,(hp-i*10)*10))+'%">'+heart+'</span></span>').join('');
+    $('hearts').setAttribute('aria-label',`Health ${Math.ceil(hp)} of ${MAXHP}; each heart is 10 HP`);
+    const protection=armor(),shield='<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 3 5v6c0 5 4 9 9 12 5-3 9-7 9-12V5Z"/><path fill="#fff" fill-opacity=".16" d="M12 4 5 6v5c0 4 3 7 7 10Z"/><path fill="none" stroke="#293443" stroke-opacity=".45" stroke-width="1.2" d="m12 6 5 2v3c0 3-2 5-5 7-3-2-5-4-5-7V8Z"/></svg>';
+    $('armorValue').innerHTML=Array.from({length:5},(_,i)=>'<span class="shield">'+shield+'<span class="shield-fill" style="clip-path:inset('+Math.max(0,Math.min(100,100-(protection-i*4)*25))+'% 0 0)">'+shield+'</span></span>').join('');
+    $('armorValue').setAttribute('aria-valuenow',protection);$('armorValue').setAttribute('aria-valuetext',`${protection} armor; each shield is 4; damage reduction ${protection*4}%`);
+    const n=Math.ceil(hunger.value);
+    const food='<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 11C0 8 2 3 7 3h10c5 0 7 5 3 8v9H4Z"/><path fill="none" stroke="#292332" stroke-opacity=".4" stroke-width="1.4" stroke-linecap="round" d="m8 7-1 5m6-5-1 5m6-5-1 5"/></svg>';
+    $('satiety').innerHTML=Array.from({length:5},(_,i)=>'<span class="food-icon">'+food+'<span class="food-fill" style="clip-path:inset('+Math.max(0,Math.min(100,100-(hunger.value-i*20)*5))+'% 0 0)">'+food+'</span></span>').join('');
+    $('satiety').setAttribute('aria-valuenow',n);$('satiety').setAttribute('aria-valuetext',n===0?'Starving':n<20?'Hungry: movement slowed':n+' of 100');
+    $('hp').classList.toggle('hungry',hunger.value<20);survivalDisplay=n;
+  }
+  function eatFood(id){
+    const food=Survival.food[id];if(!food||!(inv[id]>0)||dead||hp>=MAXHP&&hunger.value>=100)return false;
+    inv[id]--;hunger.eat(food[0]);hp=Math.min(MAXHP,hp+food[1]);swing=.3;renderHP();renderBar();saveSoon();return true;
+  }
   const creative = () => !!(window.Creative && Creative.on); // 创造模式：不掉血、放置不消耗、一下挖掉（creative.js）
   // —— 死亡 ——血量归零：人倒下不能动，画面变暗，逐字打出 “You are dead.”；打完后按任意键、点一下或碰一下屏幕，在床边或出生点醒来。背包保留。
   let dead = false, deadReady = false, deadTimer = 0;
@@ -663,15 +684,15 @@
   }
   function wake() {
     if (!dead || !deadReady) return;
-    dead = deadReady = false; hp = MAXHP; Object.assign(p, (window.Home && Home.spawn()) || spawnPos()); v.y = 0; fallFrom = p.y; // 睡过的床优先
+    dead = deadReady = false; hp = MAXHP; hunger.eat(100); regenT=0; Object.assign(p, (window.Home && Home.spawn()) || spawnPos()); v.y = 0; fallFrom = p.y; // 睡过的床优先
     deadBox.style.opacity = 0; setTimeout(() => { if (!dead) deadBox.style.display = 'none'; }, 1200);
     Lang.say('You are back. Be careful!', false, 1.4); renderHP(); saveSoon(); schedule();
   }
   addEventListener('keydown', e => { if (dead) { e.stopImmediatePropagation(); e.preventDefault(); wake(); } }, true);
   for (const ev of ['mousedown', 'touchstart']) addEventListener(ev, e => { if (dead) { e.stopImmediatePropagation(); wake(); } }, true);
-  function hurt(d) {
+  function hurt(d,ignoreArmor=false) {
     if (creative() || dead) return;
-    hp -= d * (1 - armor() * 0.04);
+    hp -= d * (ignoreArmor?1:1 - armor() * 0.04);
     $('hurt').style.opacity = 0.6; setTimeout(() => { $('hurt').style.opacity = 0; }, 120);
     if (hp <= 0) die();
     renderHP(); saveSoon();
@@ -684,7 +705,7 @@
     const f = (pressed('KeyW') ? 1 : 0) - (pressed('KeyS') ? 1 : 0) + touchMove.forward, s = (pressed('KeyD') ? 1 : 0) - (pressed('KeyA') ? 1 : 0) + touchMove.x;
     const sampleY=p.y+.5,wy=Math.floor(sampleY);
     const wet = waterFlow.height(Math.floor(p.x),wy,Math.floor(p.z)) > sampleY-wy;
-    const sp = (wet ? 2.6 * (equip.includes(120) ? 1.3 : 1) * (equip.includes(146) ? 1.5 : 1) : 4.6) * (time < slowUntil ? 0.5 : 1) / Math.max(1,Math.hypot(f, s)), // 蟹壳盔：游得快三成；被霜灵碰到：3 秒内减半
+    const sp = (wet ? 2.6 * (equip.includes(120) ? 1.3 : 1) * (equip.includes(146) ? 1.5 : 1) : 4.6) * (time < slowUntil ? 0.5 : 1) * (creative()?1:hunger.speed) / Math.max(1,Math.hypot(f, s)), // 蟹壳盔：游得快三成；被霜灵碰到：3 秒内减半
       sin = Math.sin(yaw), cos = Math.cos(yaw);
     v.x = (-sin * f + cos * s) * sp; v.z = (-cos * f - sin * s) * sp;
     v.x += pushX; v.z += pushZ; { const k = Math.exp(-4 * dt); pushX *= k; pushZ *= k; } // 被风隼、风暴鹏撞退
@@ -703,7 +724,11 @@
     if (hitY && v.y < 0 && fallFrom - p.y > 4) hurt(Math.floor((fallFrom - p.y - 3) * (equip.includes(148) ? 0 : equip.includes(48) ? 0.5 : 1))); // 摔落：超过 4 格开始掉血；穿滑翔披风减半
     onGround = hitY && v.y < 0;
     fallFrom = onGround || wet || climb ? p.y : Math.max(fallFrom, p.y);
-    if ((regenT += dt) > 6) { regenT = 0; if (hp < MAXHP) { hp = Math.min(MAXHP, hp + 1); renderHP(); } } // 每 6 秒回 1 点
+    const starvation=hunger.tick(dt,Math.hypot(f,s)>.05||held||pressed('Space'),creative());
+    if(starvation)hurt(starvation,true);
+    if(hunger.value>=60&&!dead){if((regenT+=dt)>=6){regenT=0;if(hp<MAXHP){hp=Math.min(MAXHP,hp+1);if(!creative())hunger.value=Math.max(0,hunger.value-1);renderHP();saveSoon();}}}else regenT=0;
+    if(Math.ceil(hunger.value)!==survivalDisplay)renderHP();
+    if((survivalSaveT+=dt)>=10){survivalSaveT=0;saveSoon();}
     if (hitY) v.y = bounce;
   }
   const viewDir = () => [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
@@ -743,8 +768,9 @@
   function place() {
     const id = selectedItem(), h = aim();
     if (window.Farm && Farm.use(h, id)) { swing = 0.3; renderBar(); return saveSoon(); }              // 种子、肥料、水桶、新植物：见 farm.js
+    if(Survival.food[id]){eatFood(id);return;}
     if (window.Home && Home.use(h, id)) { swing = 0.3; renderHP(); renderBar(); return saveSoon(); } // 门、床、浆果丛、种植等：见 home.js
-    if (MEATS[id] && inv[id] && hp < MAXHP) { inv[id]--; hp = Math.min(MAXHP, hp + MEATS[id]); swing = 0.3; renderHP(); renderBar(); return saveSoon(); } // 右键吃肉回 4 点
+
     if(h&&id===TORCH&&inv[id]){if(placedTorches.place(h)){if(!creative())inv[id]--;swing=.3;renderBar();saveSoon();}return;}
     if (!h || h.torch || !isBlock(id) || !inv[id]) return;
     const x = h.x + h.n[0], y = h.y + h.n[1], z = h.z + h.n[2];
@@ -1412,7 +1438,8 @@
     bagOpen = !bagOpen; $('bag').classList.toggle('off', !bagOpen);
     if (!bagOpen) return lock(touch);
     renderBag();
-    if (document.pointerLockElement) document.exitPointerLock(); else setPlaying(false);
+    if (document.pointerLockElement) document.exitPointerLock();
+    setPlaying(false); // 不等“锁定已解除”的通知：背包一打开就停下来、把鼠标放出来
   }
 
   // ---- 输入 ----
@@ -1523,11 +1550,15 @@
     };
     rd.readAsDataURL(f); e.target.value = '';
   };
-  document.addEventListener('pointerlockchange', () => setPlaying(document.pointerLockElement === cv));
+  document.addEventListener('pointerlockchange', () => {
+    const locked = document.pointerLockElement === cv;
+    if (locked && (bagOpen || settingsOpen)) return document.exitPointerLock(); // 背包或设置开着的时候不该锁鼠标（比如刚关背包又马上打开，上一次的锁定请求才生效）：马上放开
+    setPlaying(locked);
+  });
   // 拿不到鼠标锁定（内嵌预览窗格，或 Esc 后 1 秒内重进）时降级：不锁鼠标照样玩，方向键也能转视角
   let lockHintShown = false, lockTried = 0;
   document.addEventListener('pointerlockerror', () => {
-    if (!playing) setPlaying(true); // 已经在玩就别重置：setPlaying 会松开“按住”的状态，长按挖掘会被打断
+    if (!playing && !bagOpen && !settingsOpen) setPlaying(true); // 已经在玩就别重置：setPlaying 会松开“按住”的状态，长按挖掘会被打断。背包或设置开着时也不进入游玩，否则鼠标会消失
     if (!lockHintShown) { lockHintShown = true; $('msg').textContent = 'The mouse is not locked here. Move it to the edge to keep turning, or open this page in Chrome.'; setTimeout(() => { $('msg').textContent = ''; }, 7000); }
   });
   // 没锁住鼠标时光标会和准星分开、容易滑出窗口。补救：光标靠近窗口边缘就继续往那边转（不用再往外推）；每次点击画面都再试一次锁定。
@@ -1687,6 +1718,7 @@
       if (!id || (!isBlock(id) && !TOOLS[id])) return null;
       if (!isBlock(id)) return ItemArt.create(id,TOOLS[id],pack==='natural');
       const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ map: new THREE.TextureLoader().load(icon(id)) })); m.position.y = 0.3; return m; }, get held() { return selectedItem(); }, setBlock, give, renderBar, renderBag, icon, // debug：页面不渲染时也能手动驱动一帧、指定刷怪，供测试用
+    eatFood, get satiety(){return hunger.value;},
     heal(n) { hp = Math.min(MAXHP, hp + n); renderHP(); }, get time() { return time; }, set time(v) { time = v; schedule(); }, get yaw() { return yaw; },
     world, lighting, p, meshes, renderer, scene, get dayK() { return dayK; }, setHQ, mobs, inv, slots, equip, hurt, get hp() { return hp; }, look(y, x) { yaw = y; pitch = x; }, setTime(f) { time = f * DAY; schedule(); }, get fps() { return fps; } }; // 调试用
 })();

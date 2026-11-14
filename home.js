@@ -76,7 +76,8 @@ window.Home = (() => {
         return true;
       }
     }
-    if (FOOD[id]) { if (game.inv[id] > 0 && game.hp < 20) { game.inv[id]--; game.heal(FOOD[id]); } return true; } // 右键吃：浆果、生鱼回 2 点，蟹肉回 3 点
+    if (FOOD[id]) { game.eatFood(id); return true; } // Shared satiety and health rules.
+
     if (!h || !(game.inv[id] > 0) || !(h.n[0] || h.n[1] || h.n[2])) return false;
     const x = h.x + h.n[0], y = h.y + h.n[1], z = h.z + h.n[2], ns = alongZ();
     if (Core.doorBase(id)) {const base=Core.doorBase(id);return put([[x,y,z],[x,y+1,z]],base+(ns?0:1),id);}       // 门板横在玩家面前
