@@ -1,0 +1,12 @@
+const assert=require('assert'),vm=require('vm'),fs=require('fs');
+const ctx={window:{},THREE:{Raycaster:class{}}};vm.runInNewContext(fs.readFileSync('src/client/world/placed-torches.js','utf8'),ctx);
+const blocks=new Map([['0,2,0',3]]),world={get:(x,y,z)=>blocks.get(`${x},${y},${z}`)||0};
+const lighting={lampChunks:new Map()},store=new ctx.window.PlacedTorches({},world,lighting);
+assert.ok(store.place({x:0,y:2,z:0,n:[1,0,0]}),'侧面斜插');
+assert.ok(!store.place({x:0,y:2,z:0,n:[1,0,0]}),'不能重叠放置');
+assert.ok(store.place({x:0,y:2,z:0,n:[0,1,0]}),'顶面立放');
+assert.ok(!store.place({x:0,y:2,z:0,n:[0,-1,0]}),'不倒挂火把');
+const saved=JSON.parse(JSON.stringify(store.records)),restored=new ctx.window.PlacedTorches({},world,lighting,saved);
+assert.equal(Object.keys(restored.records).length,2,'存档恢复位置和方向');
+blocks.delete('0,2,0');assert.equal(restored.update(new Map(),false),2,'失去支撑返还两支火把');assert.equal(Object.keys(restored.records).length,0);
+console.log('火把放置、重复放置、存档与支撑移除测试通过');

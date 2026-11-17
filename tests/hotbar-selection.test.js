@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const src=fs.readFileSync('src/client/core/game.js','utf8');
+const functions=src.slice(src.indexOf('  function select(i,toggle=true)'),src.indexOf('  function renderBag()'));
+const slots=[25,26,20,21,22,23,24,8,3],spoken=[];
+const c={sel:0,hotbarActive:true,slots,held:true,swing:.2,digProgress:.5,digKey:'target',bagOpen:false,ARMOR:{},HIDE:31,inv:{},equip:[],miningFX:{reset(){}},$(){return{style:{}}},renderBar(){},renderBag(){},renderHP(){},saveSoon(){},Lang:{auto:x=>spoken.push(x)},itemName:x=>String(x)};
+vm.createContext(c);vm.runInContext('const selectedItem=()=>hotbarActive?(slots[sel]||0):0;'+functions,c);
+const current=()=>vm.runInContext('selectedItem()',c);
+c.select(0);assert.equal(c.hotbarActive,false);assert.equal(current(),0);assert.equal(c.held,false);assert.equal(c.swing,0);assert.equal(spoken.length,0);
+c.select(0);assert.equal(current(),25);c.select(1);assert.equal(current(),26);
+c.select(1);assert.equal(current(),0);c.select(2,false);assert.equal(current(),20);c.select(2,false);assert.equal(current(),20,'scroll selection never toggles off');
+c.select(2);c.useItem(26);assert.equal(current(),26);assert.equal(slots[1],20,'bag swaps retain the original slot item while unselected');
+assert.deepEqual([...slots].sort((a,b)=>a-b),[25,26,20,21,22,23,24,8,3].sort((a,b)=>a-b));
+console.log('快捷栏重复取消、重新选择、滚轮恢复、收起中断和背包交换测试通过');

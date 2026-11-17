@@ -1,0 +1,14 @@
+const assert=require('assert'),{World,CH,H,meshChunk,raycast}=require('../src/client/core/core.js');
+const w=new World(()=>new Uint8Array(CH*CH*H));w.set(15,5,0,7);
+const mesh=meshChunk(w,0,0);
+assert.equal(mesh.solid.idx.length,0,'树叶不再生成实心立方体表面');
+assert.equal(mesh.leaves.idx.length,24,'每格四张双面叶簇卡片');
+assert.equal(mesh.leaves.wind.length,32,'每个顶点携带风摆权重及相位');
+assert.ok([...mesh.leaves.pos,...mesh.leaves.nor,...mesh.leaves.uv].every(Number.isFinite));
+assert.ok([...mesh.leaves.uv].every(v=>v>=0&&v<=1),'叶簇使用独立完整UV');
+assert.deepStrictEqual(mesh.leaves,meshChunk(w,0,0).leaves,'重建区块不会随机改变枝叶朝向');
+w.set(16,5,0,7);
+assert.equal(meshChunk(w,1,0).leaves.idx.length,24,'跨区块相邻树叶保留内部层次');
+assert.equal(w.get(15,5,0),7,'碰撞数据不改变');
+assert.equal(raycast((x,y,z)=>w.get(x,y,z),[15.5,5.5,3],[0,0,-1],4).z,0,'叶簇仍可选中采集');
+console.log('叶簇几何、跨区块、UV、风摆属性与采集测试通过');

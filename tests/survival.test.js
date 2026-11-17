@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const {Hunger,food}=require('../src/client/core/survival');
+assert.equal(new Hunger().value,100);
+assert.equal(new Hunger({value:0}).value,0);
+assert.equal(new Hunger({value:150}).value,100);
+const h=new Hunger({value:0});assert.equal(h.speed,.25);assert.equal(h.tick(4),0);assert.equal(h.tick(1),1);
+let hp=20;for(let i=0;i<100;i++)hp-=h.tick(1);assert.equal(hp,0);
+h.eat(14);assert(h.speed>.25&&h.speed<1);assert.equal(h.tick(1),0);assert.equal(h.starve,0);
+h.eat(1000);assert.equal(h.value,100);assert.equal(h.speed,1);
+const moving=new Hunger(),idle=new Hunger();moving.tick(60,true);idle.tick(60);assert(moving.value<idle.value);
+const crossing=new Hunger({value:.04});assert.equal(crossing.tick(5),0);assert.equal(crossing.tick(1),1);
+const saved=new Hunger({value:0,starve:4});assert.equal(new Hunger(saved.toJSON()).tick(1),1);
+const immune=new Hunger({value:0});assert.equal(immune.tick(100,true,true),0);
+assert(food[273][0]>food[30][0]);for(const f of Object.values(food))assert(f[0]>0&&f[1]>0);
+console.log('Survival: depletion, slowing, starvation death, food recovery, save/load, creative immunity passed.');

@@ -1,0 +1,35 @@
+const assert=require('assert'),{World,CH,H,WATER,AIR,STONE,meshChunk}=require('../src/client/core/core.js'),WaterFlow=require('../src/client/world/water-flow.js');
+const floor=()=>{const d=new Uint8Array(CH*CH*H);d.fill(STONE,0,CH*CH);return d;};
+const settle=(f,max=500)=>{for(let i=0;i<max&&f.pending.size;i++)f.tick(2000);assert.equal(f.pending.size,0,'水流最终稳定');};
+const w=new World(floor),f=new WaterFlow(w);w.set(0,1,0,WATER);f.wake(0,1,0);settle(f);
+assert.equal(w.get(7,1,0),WATER,'最多扩散七格');assert.equal(w.get(8,1,0),AIR,'第八格不扩散');
+assert.equal(f.cells['7,1,0'].level,7);assert.ok(f.height(1,1,0)>f.height(6,1,0),'水位逐级降低');
+assert.equal(f.corner(8,1,0),0,'末端外沿水位降至地面');
+assert.ok(f.corner(7,1,0)>0,'末端内侧仍有水位，形成斜坡而非整块消失');
+assert.ok(!f.cells['0,1,0'],'水源不变成流水');
+const before=Object.keys(f.cells).length;
+const w2=new World(floor,JSON.parse(JSON.stringify(w.edits))),f2=new WaterFlow(w2,JSON.parse(JSON.stringify(f.cells)));
+assert.equal(Object.keys(f2.cells).length,before,'存档保留流水身份');
+w2.set(0,1,0,STONE);f2.edited(0,1,0);settle(f2);
+assert.equal(Object.keys(f2.cells).length,0,'堵住源头后所有下游退去，不能循环自供水');
+const drop=new World(floor),fall=new WaterFlow(drop);drop.set(0,5,0,WATER);fall.wake(0,5,0);settle(fall);
+assert.equal(drop.get(0,1,0),WATER,'向下落到底部');assert.equal(drop.get(1,5,0),AIR,'悬空时优先下落不横向铺开');
+assert.equal(drop.get(7,1,0),WATER,'落地后扩散');assert.ok(fall.cells['0,2,0'].falling);
+drop.set(0,3,0,STONE);fall.edited(0,3,0);settle(fall);
+assert.equal(drop.get(0,2,0),AIR,'堵住瀑布后下游退水');assert.equal(drop.get(0,3,0),STONE,'水不能覆盖实体');
+// Breach a bank next to a natural source, including negative chunk coordinates.
+const bank=new World(floor),flow=new WaterFlow(bank);
+bank.set(-1,1,0,WATER);for(const [x,z] of [[0,0],[-2,0],[-1,1],[-1,-1]])bank.set(x,1,z,STONE);
+flow.wake(-1,1,0);settle(flow);assert.equal(Object.keys(flow.cells).length,0);
+bank.set(0,1,0,AIR);flow.edited(0,1,0);settle(flow);assert.equal(bank.get(0,1,0),WATER,'挖开岸边会进水');
+const mesh=meshChunk(bank,0,0).water;assert.ok(mesh.idx.length&&mesh.flow.length===mesh.pos.length/3*4,'水网格有流向属性');
+assert.ok([...mesh.pos,...mesh.flow].every(Number.isFinite),'斜坡网格没有非法顶点');
+const border=(g,offset)=>{
+  const result=new Map();for(let i=0;i<g.pos.length;i+=3)if(g.nor[i+1]>.5&&Math.abs(g.pos[i]+offset)<1e-6)result.set(g.pos[i+2],g.pos[i+1]);return result;
+};
+const edgeLeft=border(meshChunk(bank,-1,0).water,-16),edgeRight=border(mesh,0);
+let shared=0;for(const [z,y]of edgeLeft)if(edgeRight.has(z)){shared++;assert.ok(Math.abs(edgeRight.get(z)-y)<1e-6,'相邻区块水面顶点吻合');}assert.ok(shared>0);
+let active=true;const limitedWorld=new World(floor),limited=new WaterFlow(limitedWorld,{},(x,z)=>active&&x>=0&&x<16&&z>=0&&z<16);
+limitedWorld.set(15,1,8,WATER);limited.wake(15,1,8);settle(limited);assert.equal(limitedWorld.get(16,1,8),AIR,'不模拟未加载区块');
+limited.active=(x,z)=>x>=0&&x<32&&z>=0&&z<16;limited.activate(1,0);settle(limited);assert.equal(limitedWorld.get(16,1,8),WATER,'加载邻块后边界继续传播');
+console.log('水源、七格扩散、向下流、退水、存档、岸边缺口、区块边界与网格测试通过');

@@ -1,0 +1,10 @@
+{
+  "name": "stonisle",
+  "private": true,
+  "description": "Original browser voxel sandbox for kids learning English. No build step.",
+  "scripts": {
+    "start": "node src/server/server.js 4174",
+    "test": "node --test \"tests/*.test.*\""
+  },
+  "engines": { "node": ">=22" }
+}
