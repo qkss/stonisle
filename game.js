@@ -22,8 +22,55 @@
   const waterPreview = new URLSearchParams(location.search).get('preview') === 'water';
   const materialPreview = animalPreview || waterPreview || new URLSearchParams(location.search).get('preview') === 'materials';
   if (materialPreview) save = { pack: 'natural', inv: {20:1,21:1,22:1,23:1,24:1,25:1,26:1,8:64,3:64}, slots: [25,26,20,21,22,23,24,8,3] };
-  const world = new World(undefined, save.edits || {});
+  if(materialPreview&&window.Net?.guest)save={...save,...Net.guestSave(),pack:'natural'};
+  const newMusicWorld=!save.pos&&!save.lastPlayed&&!materialPreview;
+  const furnaceState=save.furnaces||{};
+  const transitState=save.transitState||{carts:[]};
+  const railgunLoads=save.railgunLoads||{},railgunStores=save.railgunStores||{};
+  const herbState=save.herbState||{crops:{},transplants:{}};herbState.crops||={};herbState.transplants||={};
+  const guardState=save.castleGuards||{};
+  const exploration=save.exploration||(!materialPreview&&!Net?.guest?{version:1,seed:crypto.getRandomValues(new Uint32Array(1))[0]}:null);
+  if(exploration&&!exploration.sites)exploration.sites=ExplorationCastles.plan(exploration.seed,save.edits||{});
+  // Rename existing sites without changing IDs, coordinates or ownership records.
+  for(const site of exploration?.sites||[])if(site.name==='填天城')site.name='阗天城';
+  if(exploration&&exploration.version<2){
+   const old=exploration.sites.find(s=>s.blueprint===296);let touched=false;
+   if(old)for(let x=(old.x-65)>>4;x<=(old.x+79)>>4;x++)for(let z=(old.z-63)>>4;z<=(old.z+120)>>4;z++)if(save.edits?.[x+','+z])touched=true;
+   if(old&&!touched)Object.assign(old,ExplorationCastles.plan(exploration.seed,save.edits||{}).find(s=>s.blueprint===296));
+   exploration.version=2;
+  }
+  if(exploration&&!exploration.sites.some(s=>s.blueprint===298)&&!Net?.guest){exploration.sites.push(ExplorationCastles.plan(exploration.seed,save.edits||{}).find(s=>s.blueprint===298));exploration.version=3;}
+  const world = new World(exploration?ExplorationCastles.generator(exploration.sites):undefined, save.edits || {});
+  if(materialPreview&&new URLSearchParams(location.search).has('discoveryReview')){
+   const review=ExplorationCastles.plan(20261115);const index=Math.min(4,Math.max(0,+new URLSearchParams(location.search).get('discoveryReview')||0));
+   world.gen=ExplorationCastles.generator(review);save.exploration={version:1,seed:20261115,sites:review};const s=review[index];save.pos=new URLSearchParams(location.search).has('rewardReview')?[s.x+2.5,(s.base||30)+11,s.z-8.5,1.57,-.45]:[s.x+.5,(s.base||30)+1,s.z+88,0,.12];
+   if(new URLSearchParams(location.search).has('architectureReview')){for(let x=28;x<=31;x++)for(let z=31;z<=34;z++)world.set(s.x+x,(s.base||30)+17,s.z+z,52);save.pos=[s.x+29.5,(s.base||30)+18,s.z+32.5,.73,-.35];save.time=90;save.view=9;}
+  }
+  if(materialPreview&&new URLSearchParams(location.search).has('cityReview')&&save.exploration){const s=save.exploration.sites[+new URLSearchParams(location.search).get('discoveryReview')||0],f=CityRules.flag(s);save.pos=[f.x+1,f.y,f.z+2,Math.atan2(1,2),.08];save.time=90;save.view=6;save.hotbarActive=false;}
+  if(materialPreview&&new URLSearchParams(location.search).has('furnacereview')){
+    for(let x=6;x<=14;x++)for(let z=6;z<=16;z++){world.set(x,30,z,3);for(let y=31;y<=38;y++)world.set(x,y,z,0);}
+    world.set(10,31,10,289);save.pos=[10.5,31,13.2,0,-.42];save.inv={12:8,13:4,11:4,6:4,8:4,25:1};save.slots=[12,13,11,6,8,25,0,0,0];save.hotbarActive=false;
+  }
   if (window.Net) Net.world(world);
+  if(materialPreview&&new URLSearchParams(location.search).has('castle')){const castle=CastleBuild.build(world);save.pos=new URLSearchParams(location.search).has('castleRoom')?[2.7,36,-5.8,-.55,-.5]:castle.pos;save.castleResidents=castle.animals;if(new URLSearchParams(location.search).has('guardReview'))save.pos=[.5,31,27.5,0,.04];if(new URLSearchParams(location.search).has('townReview'))save.pos=[38.5,41,48.5,1.7,-.22];if(new URLSearchParams(location.search).has('gateReview'))save.pos=[.5,31,85,0,.28];if(new URLSearchParams(location.search).has('outerReview'))save.pos=[10.5,37,80.5,.45,-.1];if(new URLSearchParams(location.search).has('avenueReview'))save.pos=[.5,31,64.5,0,.1];if(new URLSearchParams(location.search).has('treasureReview'))save.pos=[2.5,41,-8.5,1.57,-.45];if(new URLSearchParams(location.search).has('farmReview'))save.pos=[-3.5,31,34.5,1.57,-.12];if(new URLSearchParams(location.search).has('accessReview'))save.pos=[15.5,31,14.8,0,0];if(new URLSearchParams(location.search).has('castlePen'))save.pos=[33,31,14,0,-.12];save.time=new URLSearchParams(location.search).has('nightReview')?480:90;save.hotbarActive=false;save.view=9;}
+  if(materialPreview&&new URLSearchParams(location.search).get('expansionreview')==='1'){
+    for(let x=0;x<22;x++)for(let z=0;z<22;z++)for(let y=30;y<43;y++)world.set(x,y,z,y===30?8:AIR);
+    for(let i=0;i<7;i++)world.set(5+i*2,31,7,280+i);
+    world.set(7,31,11,288);world.set(10,31,11,289);world.set(13,31,11,287);
+    save.pos=[11,31,16,0,-.30];save.hotbarActive=false;
+  }
+  if(materialPreview&&new URLSearchParams(location.search).get('cherryreview')==='1'){
+    for(let x=4;x<20;x++)for(let z=4;z<20;z++)for(let y=30;y<43;y++)world.set(x,y,z,y===30?1:AIR);
+    for(let y=31;y<35;y++)world.set(11,y,10,6);
+    for(let x=9;x<=13;x++)for(let z=8;z<=12;z++)for(let y=34;y<=36;y++)if(Math.abs(x-11)+Math.abs(z-10)+(y-34)<5)world.set(x,y,z,144);
+    save.pos=[15,31,17,.48,.13];save.hotbarActive=false;
+  }
+  if(materialPreview&&new URLSearchParams(location.search).get('bedreview')==='1'){
+    for(let x=5;x<=15;x++)for(let z=5;z<=16;z++)for(let y=30;y<40;y++)world.set(x,y,z,y===30?8:AIR);
+    world.set(10,31,9,67);world.set(10,31,10,67);
+    save.pos=[12.5,31,13,.65,-.42];save.hotbarActive=false;
+  }
+
   if(materialPreview&&new URLSearchParams(location.search).get('blocks')==='1'){
     save.pos=[10,37,18,0,-.14];save.sel=0;
     for(let x=0;x<=22;x++)for(let z=0;z<=24;z++)for(let y=30;y<56;y++)world.set(x,y,z,y===30?3:AIR);
@@ -114,6 +161,8 @@
   let sel = save.sel || 0;
   let hotbarActive=false; // 每次进游戏手都是收起的、物品栏不选中；按 1–9、滚轮或点一格才拿出来
   const selectedItem=()=>hotbarActive?(slots[sel]||0):0;                     // 快捷栏选中格
+  const BLADES=[23,26,29,153];let sheathed=0,sheathAt=0; // 背在背上的剑：按 X 收起/拔出；拿着剑换到别的格子时剑也自动背到背上
+  const onBack=()=>sheathed&&inv[sheathed]>0&&slots.includes(sheathed)&&selectedItem()!==sheathed?sheathed:0;
 
   // ---- 物品：1–10 是方块，20+ 是工具/武器，30 是掉落物 ----
   const PICK = 20, AXE = 21, SHOVEL = 22, SWORD = 23, TORCH = 24, PICK2 = 25, SWORD2 = 26, MEAT = 30, HIDE = 31;
@@ -127,13 +176,31 @@
   const equip = save.equip || [0, 0, 0, 0]; while (equip.length < 4) equip.push(0);
   let hp = save.hp || MAXHP;
   const hunger=new Survival.Hunger(save.hunger);
+  const cityEffects=new CityCrafts.Effects(save.cityEffects);
   let survivalSaveT=0,survivalDisplay=-1;
   const armor = () => equip.reduce((a, id) => a + (id ? ARMOR[id][1] : 0), 0);
-  const itemName = id => Lang.item(id); // 游戏内一律英文名，见 lang.js
+  const recipeChinese={...NAMES,466:'岩浆晶核',16:'木镐',17:'木斧',18:'木铲',19:'钻镐',27:'长矛',28:'岩心镐',29:'黑曜剑',33:'黏土',34:'蝎壳',35:'藤条',36:'獠牙',37:'影毛',38:'蝠翼',39:'黑羽',46:'蝎壳靴',47:'夜行斗篷',48:'滑翔披风',49:'羽毛笔',106:'木桶',108:'铁桶',110:'荧粉',111:'霜晶',113:'水母胶',114:'蟹壳',120:'蟹壳盔',121:'草帽',122:'草编衣',123:'草编裤',124:'草鞋',125:'皮裤',126:'铁护腿',127:'合金头盔',128:'合金护甲',129:'合金护腿',130:'合金锭',131:'合金靴',132:'白绒',133:'虫牙',134:'岩心',135:'黑曜石晶核',136:'鳗皮',137:'潮鳞',138:'沙鹫羽',139:'风羽',140:'影膜',141:'风暴羽',142:'雪行靴',146:'潜水衣',147:'潮鳞甲',148:'长翼披风',149:'风行靴',150:'影行斗篷',151:'风暴冠',153:'木剑',261:'弓',262:'弩',263:'猎枪',264:'箭',265:'弹丸',266:'弓弦',267:'火药',290:'手雷',291:'铁锭',292:'金锭',293:'猎枪制作图纸',294:'飞行背包图纸',295:'发电机图纸',296:'马车图纸',297:'金币',298:'铸币机图纸',299:'铸币机',300:'变色油墨',301:'精选云母片',302:'氧化铁颜料',303:'精制树脂'};
+  Object.assign(recipeChinese,Object.fromEntries(Object.entries(CityCrafts.items).map(([id,s])=>[id,s.name])));
+  for(const d of HerbFarming.defs)recipeChinese[d.seed]=d.seedName||d.name+'种子';
+  for(const d of CerealCrops.list)recipeChinese[d.product]=d.name;
+  Lang.setChinese(recipeChinese);
+  const itemName = id => Lang.item(id); // English stays canonical for speech and gameplay.
+  const displayName=id=>Lang.display(id);
   const isBlock = id => !!BLOCKS[id];           // 1–15 和 50–59 是方块
-  const inv = save.inv || {};                                  // 背包：物品 id → 数量。新档空手起步，工具靠合成
-  const slots = save.slots || [0, 0, 0, 0, 0, 0, 0, 0, 0];     // 快捷栏 9 格放的物品
-  const RECIPES = [ // [产物, 数量, {材料 id: 数量}]；工具不会坏，已有就不能再做
+  const itemSkin = save.itemSkin || {}; // 捡到别人扔的带皮肤的剑：这种剑按捡到的皮肤显示（同一种剑共用一个皮肤），全扔光/用光后恢复自己的皮肤
+  const skinFor = id => !window.WeaponSkins || !WeaponSkins.supports(id) ? 'default' : itemSkin[id] && inv[id] > 0 ? itemSkin[id] : WeaponSkins.selected;
+  const inv = save.inv || {}; CityCrafts.mergeLegacy(inv);                                  // 背包：物品 id → 数量。新档空手起步，工具靠合成
+  const slots = (save.slots || [0, 0, 0, 0, 0, 0, 0, 0, 0]).map(id=>CityCrafts.items[id]?.legacy?CityCrafts.items[id].base:id);     // 快捷栏 9 格放的物品
+  const RECIPES = [
+    [620,1,{291:4,8:4}],[621,1,{291:2,14:1}],[622,1,{291:3,50:2,14:1}],[600,1,{291:8,14:4,135:1}],[610,8,{291:6,8:4}],[611,1,{291:8,8:12}],[612,1,{291:12,130:4,11:8}],
+    [460,1,{130:12,135:2,291:8,14:4}],
+    [470,1,{460:1,130:16,135:4,466:4}],
+    [476,1,{470:1,130:24,135:8,466:8}],
+    [482,1,{476:1,130:32,135:16,466:16,292:16}],
+    [299,1,{298:1,291:8,292:2,3:8,300:2}],
+    ...CityCrafts.recipes,
+    ...CerealCrops.list.map(d=>[d.seed,2,{[d.product]:1}]),
+    ...InkMaterials.RECIPES, // [产物, 数量, {材料 id: 数量}]；工具不会坏，已有就不能再做
     [8, 4, { 6: 1 }], [10, 4, { 3: 4 }], [9, 4, { 2: 2, 4: 2 }],
     [16, 1, { 8: 4 }], [17, 1, { 8: 4 }], [18, 1, { 8: 2 }], [153, 1, { 8: 3 }], // 木质工具：只用木板，砍一棵树就能做——木镐、木斧、木铲、木剑。比空手快一倍左右，比石器慢
     [PICK, 1, { 8: 2, 3: 3 }], [AXE, 1, { 8: 2, 3: 3 }], [SHOVEL, 1, { 8: 2, 3: 1 }], [SWORD, 1, { 8: 1, 3: 2 }],
@@ -152,13 +219,18 @@
     [9, 4, { 33: 2 }], [46, 1, { 34: 3 }], [27, 1, { 36: 2, 8: 2 }], [47, 1, { 37: 4 }], // 怪物掉落：黏土 → 红砖；蝎壳 → 蝎壳靴；獠牙 → 长矛；影毛 → 夜行斗篷
     [90, 4, { 4: 2, 3: 2 }], [91, 4, { 4: 3, 2: 1 }], [92, 4, { 9: 4, 11: 1 }], [106, 1, { 8: 3 }], [108, 1, { 12: 3 }], [179, 1, { 6: 3, 3: 2 }], // 木桶：3 块木板；铁桶：3 块铁矿；篝火：3 根原木 + 2 块石头
     [266, 1, { 35: 1 }], [267, 2, { 11: 1, 4: 1 }], [264, 4, { 8: 1, 3: 1, 39: 1 }], [265, 8, { 12: 1, 267: 1 }], // 弓弦：1 根藤；火药 ×2：1 煤 + 1 沙；箭 ×4：木板 + 石头 + 黑羽；弹丸 ×8：铁矿 + 火药
-    [261, 1, { 8: 3, 266: 2 }], [262, 1, { 8: 3, 12: 2, 266: 2 }], [263, 1, { 12: 4, 8: 2, 267: 2 }],             // 弓：3 木板 + 2 弓弦；弩：再加 2 铁矿；猎枪：4 铁矿 + 2 木板 + 2 火药
+    [261, 1, { 8: 3, 266: 2 }], [262, 1, { 8: 3, 12: 2, 266: 2 }], [263, 1, { 12: 4, 8: 2, 267: 2, 293: 1 }],             // 弓：3 木板 + 2 弓弦；弩：再加 2 铁矿；猎枪：4 铁矿 + 2 木板 + 2 火药
     
   ];
   for(const w of Core.WOODS){
     if(w.log!==6)RECIPES.push([w.plank,4,{[w.log]:1}],[w.door,1,{[w.plank]:6}],[w.chest,1,{[w.plank]:8}]);
     RECIPES.push([w.ladder,3,{[w.plank]:4}],[w.stairs,4,{[w.plank]:6}],[w.slab,6,{[w.plank]:3}],[w.fence,3,{[w.plank]:4}]);
   }
+  // 矿石要先进熔炉炼成锭（blast.js）：所有用铁矿 12 / 金矿 13 的配方改用铁锭 291 / 金锭 292
+  for(const r of RECIPES)if(r[0]!==InkMaterials.OXIDE)for(const [ore,bar] of [[12,291],[13,292]])if(r[2][ore]){r[2][bar]=r[2][ore];delete r[2][ore];}
+  // 无框彩色玻璃（280–286）：两块玻璃磨成两块无框的，四块无框的加一样染料染色；熔炉、炸药、手雷、岩浆
+  RECIPES.push([280,2,{50:2}],[281,4,{280:4,2:1}],[282,4,{280:4,70:1}],[283,4,{280:4,68:1}],[284,4,{280:4,7:1}],[285,4,{280:4,69:1}],[286,4,{280:4,82:1}],
+    [289,1,{3:8}],[288,1,{267:4,4:1}],[290,2,{267:2,291:1}],[287,1,{3:2,11:2}]);
   const DAY = 600;                                             // 一昼夜的秒数（白天占 65%）
   let time = save.time == null ? 60 : save.time;
   if(materialPreview&&new URLSearchParams(location.search).get('night')==='1')time=DAY*.82;
@@ -181,9 +253,10 @@
   let saveTimer = 0;
   function saveNow() {
     clearTimeout(saveTimer); saveTimer = 0;
-    if (materialPreview || !hasStarted || (window.Net && Net.guest)) return; // 访客不写世界存档
-    try { saveLibrary.save(selectedSave, { edits: world.edits, torches: placedTorches.records, water: waterFlow.cells, mining: blockDamage.records, pos: [p.x, p.y, p.z, yaw, pitch], sel, hotbarActive, view: R, hq, pack, inv, slots, time, hp, hunger:hunger.toJSON(), equip }); }
-    catch (e) { console.warn('存档失败', e); }
+    if(window.Net?.guest)return Net.savePlayer();
+    if (materialPreview || !hasStarted) return true; // 访客不写世界存档
+    try { saveLibrary.save(selectedSave, { edits: world.edits, exploration, herbState, furnaces: furnaceState, railgunLoads,railgunStores,transitState, castleResidents:castleResidentState(),castleGuards:guardState, home:window.Home?.state||save.home, torches: placedTorches.records, water: waterFlow.cells, lava: lavaFlow.cells, mining: blockDamage.records, pos: [p.x, p.y, p.z, yaw, pitch], sel, hotbarActive, itemSkin, view: R, hq, pack, inv, slots, time, hp, hunger:hunger.toJSON(), cityEffects:cityEffects.toJSON(), equip }); return true; }
+    catch (e) { console.warn('存档失败', e); return false; }
   }
   const saveSoon = () => { if (!saveTimer) saveTimer = setTimeout(saveNow, 400); };
   addEventListener('pagehide', saveNow);
@@ -384,6 +457,27 @@
     const FRUIT_TILES = [fruity(760, [248, 216, 56, 0.5]), fruity(770, [122, 60, 168]), fruity(780, [222, 72, 96])]; // 78–80：香蕉树叶（细长的黄香蕉）、葡萄藤（紫葡萄）、荔枝树叶（红荔枝）；排在粘液方块后面
     tiles.push((x, y) => { const e = Math.min(x, y, 63 - x, 63 - y); return mul(mix([84, 184, 74], [156, 232, 124], pn(x, y, 6, 6, 750)), e < 4 ? 0.74 : e < 14 ? 1 : 1.12); }); // 77：粘液方块，绿色果冻，边上深一圈、中间亮一块
     tiles.push(...FRUIT_TILES);
+    // 81–86：无框玻璃（近白，颜色在顶点色里）、岩浆、炸药顶/侧、熔炉顶/侧
+    tiles.push((x, y) => (Math.abs(x - y - 12) < 2.5 && x > 6 && x < 30) || (Math.abs(x - y - 22) < 1.2 && x > 24 && x < 40) ? [255, 255, 255] : mul([226, 234, 238], 0.96 + 0.05 * pn(x, y, 4, 4, 810)));
+    tiles.push((x, y) => { const v = fbm(x, y, 820); return pn(x, y, 6, 6, 822) > 0.72 ? mul([96, 26, 10], 0.8 + 0.4 * v) : mix([214, 64, 14], [255, 206, 70], Math.min(1, v * 1.4)); });
+    tiles.push((x, y) => { const d = Math.hypot((x % 32) - 15.5, (y % 32) - 15.5); return d < 3 ? [70, 60, 52] : d < 12 ? mul([206, 50, 40], 0.85 + 0.2 * pn(x, y, 8, 8, 830)) : [120, 30, 26]; });
+    tiles.push((x, y) => {
+      const stick = mul([200, 46, 38], (x % 16 < 1.5 ? 0.6 : 0.9) + 0.15 * pn(x, y, 8, 8, 840));
+      if (y < 22 || y >= 42) return stick;
+      const G = { T: ['1111', '0110', '0110', '0110', '0110'], N: ['1001', '1101', '1011', '1001', '1001'] }, ch = Math.floor((x - 11) / 15), col = Math.floor(((x - 11) % 15) / 3), row = Math.floor((y - 22) / 4);
+      return x >= 11 && ch < 3 && col < 4 && G['TNT'[ch]][row][col] === '1' ? [40, 34, 32] : [236, 230, 218];
+    });
+    tiles.push((x, y) => mul(rock(x, y, 850), x < 3 || y < 3 || x > 60 || y > 60 ? 0.7 : 0.95));
+    tiles.push((x, y) => { if (x >= 16 && x < 48 && y >= 30 && y < 54) return y > 46 ? mix([255, 120, 20], [255, 210, 80], pn(x, y, 8, 4, 861)) : [26, 22, 20]; const b = brickCell(x, y); return b === null ? [64, 62, 60] : mul(rock(x, y, 860), 0.8 + b * 0.25); });
+    // Same framed optical crystal as the basic prism; preserve a pale specular centre,
+    // coloured edge gradient and separate dark bezel instead of tinting a stone tile.
+    QuantumRailgunCore.tiers.slice(1).forEach((tier,index)=>{
+      const color=[tier.color>>16&255,tier.color>>8&255,tier.color&255];
+      tiles[120+index]=(x,y)=>{const d=Math.max(Math.abs(x-31.5),Math.abs(y-31.5));
+        if(d>26)return [40,52,70];if(d>23)return [70,96,130];
+        return mix([242,250,255],color,Math.min(1,Math.hypot(x-31.5,y-31.5)/34));
+      };
+    });
     const ctx = atlas.getContext('2d'), img = ctx.createImageData(atlas.width, TS);
     const k = U / TS, lum = new Float32Array(TS * TS);
     tiles.forEach((fn, t) => {
@@ -401,7 +495,8 @@
         for (let j = 0; j < 3; j++) img.data[i + j] = Math.min(255, img.data[i + j] * f);
       }
     });
-    ctx.putImageData(img, 0, 0, from * TS, 0, atlas.width - from * TS, TS); // 只写回新画的那一段
+    ctx.putImageData(img, 0, 0, from * TS, 0, atlas.width - from * TS, TS);
+    ctx.fillStyle="#c0c8ce";ctx.fillRect(123*TS,0,TS,TS);for(let row=0;row<TS;row++){const v=184+Math.round(12*Math.sin(row*2.3));ctx.fillStyle=`rgb(${v},${v+5},${v+9})`;ctx.fillRect(123*TS,row,TS,1);}BedMaterials.draw(ctx,TS);ExpansionMaterials.draw(ctx,TS);HerbMaterials.draw(ctx,TS);CerealCrops.draw(ctx,TS); // 只写回新画的那一段
   }
   let packRequest = 0;
   function applyPack() {
@@ -482,10 +577,13 @@
   ]];
   const foliage=new Foliage(tex,ATLAS_TILES,()=>{renderer.shadowMap.needsUpdate=true;schedule();});
   MATS[0].push(foliage.basic,foliage.grassBasic);MATS[1].push(foliage.lit,foliage.grassLit);
+  for(const [i,M] of [[0,THREE.MeshBasicMaterial],[1,THREE.MeshPhongMaterial]])MATS[i].push(new M({map:tex,vertexColors:true,transparent:true,opacity:.5,depthWrite:false,...(i?{shininess:60,specular:0x333333}:{})})); // 4：无框彩色玻璃（半透明，不写深度）
+  MATS[0].push(foliage.cherryBasic);MATS[1].push(foliage.cherryLit);
   for(const materials of MATS)WaterMaterial.decorate(materials[1],ATLAS_TILES);
   const lighting=new WorldLighting(scene,world);
   const placedTorches=new PlacedTorches(scene,world,lighting,save.torches);
   for(const material of MATS[1])WorldLighting.decorate(material);
+  for(const materials of MATS)LavaMaterial.decorate(materials[0],ATLAS_TILES);
   const torchWorld=new THREE.Vector3(),torchDirection=new THREE.Vector3();
   const leafDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.5 }); // 让镂空树叶投出镂空的影子
   const ambient = new THREE.AmbientLight(0xdfe8ff, 0.85); scene.add(ambient);
@@ -546,6 +644,7 @@
   function setView(n) {
     R = n; $('view').value = n; $('viewN').textContent = n;
     scene.fog.near = R * CH * 0.55; scene.fog.far = (R - 0.4) * CH;
+    if(materialPreview&&new URLSearchParams(location.search).has('architectureReview')){scene.fog.near=200;scene.fog.far=350;}
     camera.far = Math.max(64, R * CH + 24); camera.updateProjectionMatrix();
     lastC = null; schedule();
   }
@@ -558,9 +657,13 @@
     for(const dx of [-1,0,1])for(const dz of [-1,0,1])waterDirty.add(((x+dx)>>4)+','+((z+dz)>>4));
     saveSoon();
   });
+  // 岩浆（287）：和水同一套流动规则，流得慢、最多流 3 格；碰到会烫伤见 blast.js
+  const lavaFlow=new WaterFlow(world,save.lava,(x,z)=>meshes.has((x>>4)+','+(z>>4)),(x,y,z)=>{for(const dx of [-1,0,1])for(const dz of [-1,0,1])waterDirty.add(((x+dx)>>4)+','+((z+dz)>>4));saveSoon();},{id:Core.LAVA,max:3});
+  let lavaClock=0;
   function updateWater(dt){
-    waterClock+=dt;WaterMaterial.update(dt);
+    waterClock+=dt;WaterMaterial.update(dt);LavaMaterial.update(dt);
     if(waterClock>=.12){waterClock%=.12;waterFlow.tick(256);}
+    if((lavaClock+=dt)>=.6){lavaClock%=.6;lavaFlow.tick(64);}
     for(const k of waterDirty){waterDirty.delete(k);if(meshes.has(k)){const [x,z]=k.split(',').map(Number);build(x,z);break;}}
   }
   function drop(k) {
@@ -571,7 +674,7 @@
     const k = cx + ',' + cz; drop(k);
     lighting.chunk(cx,cz);
     const parts = meshChunk(world, cx, cz), out = [];
-    [parts.solid, parts.water, parts.leaves, parts.grass].forEach((g, w) => {
+    [parts.solid, parts.water, parts.leaves, parts.grass, parts.glass, parts.cherry].forEach((g, w) => {
       if (!g.idx.length) return;
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(g.pos, 3));
@@ -580,15 +683,15 @@
       geo.setAttribute('color', new THREE.BufferAttribute(g.col, 3));
       geo.setIndex(new THREE.BufferAttribute(g.idx, 1));
       if(w===1){geo.setAttribute('waterFlow',new THREE.BufferAttribute(g.flow,4));geo.setAttribute('waterFoam',new THREE.BufferAttribute(g.foam,1));geo.computeVertexNormals();}
-      if(w>=2)geo.setAttribute('leafWind',new THREE.BufferAttribute(g.wind,2));
+      if(w===2||w===3||w===5)geo.setAttribute('leafWind',new THREE.BufferAttribute(g.wind,2));
       lighting.geometry(geo,cx,cz,w===0);
       const m = new THREE.Mesh(geo, MATS[1][w]);
-      m.userData.w = w; m.receiveShadow = true; m.castShadow = w!==1; m.customDepthMaterial = w===3?foliage.grassDepth:w===2?foliage.depth:leafDepth;
+      m.userData.w = w; if(w===0)m.userData.railgunRanges=parts.railgunRanges; m.receiveShadow = true; m.castShadow = w!==1&&w!==4; m.customDepthMaterial = w===5?foliage.cherryDepth:w===3?foliage.grassDepth:w===2?foliage.depth:leafDepth;
       m.position.set(cx * CH, 0, cz * CH);
       scene.add(m); out.push(m);
     });
     meshes.set(k, out);
-    waterFlow.activate(cx,cz);
+    waterFlow.activate(cx,cz);lavaFlow.activate(cx,cz);
     renderer.shadowMap.needsUpdate = true;
   }
   function updateChunks() {
@@ -602,18 +705,21 @@
       queue.sort((a, b) => a[0] - b[0]);
       for (const k of meshes.keys()) {
         const [x, z] = k.split(',').map(Number);
-        if ((x - pcx) ** 2 + (z - pcz) ** 2 > (R + 1) ** 2) { drop(k);waterFlow.deactivate(x,z); }
+        if ((x - pcx) ** 2 + (z - pcz) ** 2 > (R + 1) ** 2) { drop(k);waterFlow.deactivate(x,z);lavaFlow.deactivate(x,z); }
       }
     }
     for (let i = 0; i < 2 && queue.length; i++) { const q = queue.shift(); build(q[1], q[2]); }
   }
   function setBlock(x, y, z, id) {
+    if(QuantumRailgunCore.isBlock(world.get(x,y,z))&&world.get(x,y,z)!==id){setBlocks([[x,y,z,id]]);return;}
+    window.QuantumRailgun?.removed(x,y,z,id);
     blockDamage.clear(x,y,z);
     const lamp = id === Core.LAMP || world.get(x, y, z) === Core.LAMP;   // 放下或挖掉灯：光照范围会跨到相邻区块
+    if(world.get(x,y,z)===289&&id!==289)window.Furnace?.removed(x,y,z);
     world.set(x, y, z, id); saveSoon(); if (window.Net) Net.block(x, y, z, id);
     for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const b=world.get(x+dx,y,z+dz),info=Core.ladderInfo(b);if(info&&!Core.ladderSupported((a,c,d)=>world.get(a,c,d),x+dx,y,z+dz,info)){setBlock(x+dx,y,z+dz,AIR);give(Core.WOODS[info.wood].ladder);}}
 
-    waterFlow.edited(x,y,z);
+    waterFlow.edited(x,y,z);lavaFlow.edited(x,y,z);
     for(const dx of [-1,0,1])for(const dz of [-1,0,1])waterDirty.add(((x+dx)>>4)+','+((z+dz)>>4));
     const cx = x >> 4, cz = z >> 4, lx = x & 15, lz = z & 15;
     const touch = (a, b) => { if (meshes.has(a + ',' + b)) build(a, b); };
@@ -623,6 +729,15 @@
     if (lamp) for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) if (dx || dz) touch(cx + dx, cz + dz);
   }
 
+  function setBlocks(list) { // 一次改很多格（爆炸，blast.js）：全部改完再重建，每个区块只建一次
+    list=QuantumRailgunCore.expandEdits((x,y,z)=>world.get(x,y,z),list);
+    const dirty=new Set();
+    for(const [x,y,z,id] of list){window.QuantumRailgun?.removed(x,y,z,id);if(world.get(x,y,z)===289&&id!==289)window.Furnace?.removed(x,y,z);blockDamage.clear(x,y,z);world.set(x,y,z,id);if(window.Net)Net.block(x,y,z,id);waterFlow.edited(x,y,z);lavaFlow.edited(x,y,z);for(const dx of [-1,0,1])for(const dz of [-1,0,1])dirty.add(((x+dx)>>4)+','+((z+dz)>>4));}
+    for(const k of dirty)if(meshes.has(k)){const [a,b]=k.split(',').map(Number);build(a,b);}
+    saveSoon();
+  }
+  function railgunPlace(h,id){const plan=QuantumRailgunCore.planPlace((x,y,z)=>world.get(x,y,z),h,id,[p.x-W,p.y,p.z-W,p.x+W,p.y+PH,p.z+W]);if(!plan)return false;setBlocks(plan);return true;}
+  function railgunRotate(h,id){const plan=QuantumRailgunCore.planRotate((x,y,z)=>world.get(x,y,z),h,id,[p.x-W,p.y,p.z-W,p.x+W,p.y+PH,p.z+W]);if(!plan)return false;setBlocks(plan);return true;}
   // ---- 物理：AABB 分轴移动 ----
   const solid = id => id !== AIR && id !== WATER && !Core.PASS.has(id); // 打开的门和植物可以走过去
   function hits(at=p) {
@@ -632,6 +747,14 @@
       for(const q of Core.shapeBoxes(id,get,x,y,z))if(lo[0]<x+q[3]-1e-5&&hi[0]>x+q[0]+1e-5&&lo[1]<y+q[4]-1e-5&&hi[1]>y+q[1]+1e-5&&lo[2]<z+q[5]-1e-5&&hi[2]>z+q[2]+1e-5)return true;
     }
     return false;
+  }
+  function freeSpawn(){
+    if(!hits())return false;
+    for(let radius=1;radius<=5;radius++)for(const dy of [0,1,-1,2,-2])for(let dx=-radius;dx<=radius;dx++)for(let dz=-radius;dz<=radius;dz++){
+      if(Math.max(Math.abs(dx),Math.abs(dz))!==radius)continue;
+      const at={x:Math.floor(p.x)+dx+.5,y:Math.floor(p.y)+dy,z:Math.floor(p.z)+dz+.5};
+      if(!hits(at)&&solid(world.get(Math.floor(at.x),at.y-1,Math.floor(at.z)))){p.x=at.x;p.y=at.y;p.z=at.z;return true;}
+    }return false;
   }
   function move(a,d){
     const steps=Math.max(1,Math.ceil(Math.abs(d)/.15)),delta=d/steps;
@@ -661,6 +784,7 @@
     $('hp').classList.toggle('hungry',hunger.value<20);survivalDisplay=n;
   }
   function eatFood(id){
+    const tonic=CityCrafts.items[id];if(tonic){if(dead||!(inv[id]>0)||(tonic.heal&&hp>=MAXHP)||(tonic.food&&hunger.value>=100&&!tonic.effect)||!cityEffects.canUse(id))return false;inv[id]--;hp=Math.min(MAXHP,hp+(tonic.heal||0));hunger.eat(tonic.food||0);cityEffects.use(id);swing=.3;renderHP();renderBar();saveSoon();return true;}
     const food=Survival.food[id];if(!food||!(inv[id]>0)||dead||hp>=MAXHP&&hunger.value>=100)return false;
     inv[id]--;hunger.eat(food[0]);hp=Math.min(MAXHP,hp+food[1]);swing=.3;renderHP();renderBar();saveSoon();return true;
   }
@@ -672,6 +796,7 @@
   deadBox.innerHTML = '<div style="transform:translateY(-22vh)"><span id="deadText"></span><span style="opacity:.8">▌</span><div id="deadHint" style="margin-top:22px;font:16px system-ui;letter-spacing:0;opacity:0;transition:opacity .6s">Press any key to wake up</div></div>';
   function die() {
     if (dead) return;
+    cityEffects.clear();
     dead = true; deadReady = false; held = false; hp = 0; for (const k in keys) keys[k] = false;
     const text = 'You are dead.', out = $('deadText'); out.textContent = ''; $('deadHint').style.opacity = 0;
     deadBox.style.display = 'grid'; requestAnimationFrame(() => { deadBox.style.opacity = 0.82; });
@@ -692,7 +817,8 @@
   for (const ev of ['mousedown', 'touchstart']) addEventListener(ev, e => { if (dead) { e.stopImmediatePropagation(); wake(); } }, true);
   function hurt(d,ignoreArmor=false) {
     if (creative() || dead) return;
-    hp -= d * (ignoreArmor?1:1 - armor() * 0.04);
+    window.CityControl?.damaged();
+    hp -= d * (ignoreArmor?1:(1 - armor() * 0.04)*cityEffects.factor('guard'));
     $('hurt').style.opacity = 0.6; setTimeout(() => { $('hurt').style.opacity = 0; }, 120);
     if (hp <= 0) die();
     renderHP(); saveSoon();
@@ -705,7 +831,7 @@
     const f = (pressed('KeyW') ? 1 : 0) - (pressed('KeyS') ? 1 : 0) + touchMove.forward, s = (pressed('KeyD') ? 1 : 0) - (pressed('KeyA') ? 1 : 0) + touchMove.x;
     const sampleY=p.y+.5,wy=Math.floor(sampleY);
     const wet = waterFlow.height(Math.floor(p.x),wy,Math.floor(p.z)) > sampleY-wy;
-    const sp = (wet ? 2.6 * (equip.includes(120) ? 1.3 : 1) * (equip.includes(146) ? 1.5 : 1) : 4.6) * (time < slowUntil ? 0.5 : 1) * (creative()?1:hunger.speed) / Math.max(1,Math.hypot(f, s)), // 蟹壳盔：游得快三成；被霜灵碰到：3 秒内减半
+    const sp = (wet ? 2.6 * (equip.includes(120) ? 1.3 : 1) * (equip.includes(146) ? 1.5 : 1) : 4.6) * (time < slowUntil ? 0.5 : 1) * (creative()?1:hunger.speed) * cityEffects.factor('speed') / Math.max(1,Math.hypot(f, s)), // 蟹壳盔：游得快三成；被霜灵碰到：3 秒内减半
       sin = Math.sin(yaw), cos = Math.cos(yaw);
     v.x = (-sin * f + cos * s) * sp; v.z = (-cos * f - sin * s) * sp;
     v.x += pushX; v.z += pushZ; { const k = Math.exp(-4 * dt); pushX *= k; pushZ *= k; } // 被风隼、风暴鹏撞退
@@ -724,7 +850,7 @@
     if (hitY && v.y < 0 && fallFrom - p.y > 4) hurt(Math.floor((fallFrom - p.y - 3) * (equip.includes(148) ? 0 : equip.includes(48) ? 0.5 : 1))); // 摔落：超过 4 格开始掉血；穿滑翔披风减半
     onGround = hitY && v.y < 0;
     fallFrom = onGround || wet || climb ? p.y : Math.max(fallFrom, p.y);
-    const starvation=hunger.tick(dt,Math.hypot(f,s)>.05||held||pressed('Space'),creative());
+    const starvation=hunger.tick(dt,Math.hypot(f,s)>.05||held||pressed('Space'),creative()||cityEffects.active.fasting>0);
     if(starvation)hurt(starvation,true);
     if(hunger.value>=60&&!dead){if((regenT+=dt)>=6){regenT=0;if(hp<MAXHP){hp=Math.min(MAXHP,hp+1);if(!creative())hunger.value=Math.max(0,hunger.value-1);renderHP();saveSoon();}}}else regenT=0;
     if(Math.ceil(hunger.value)!==survivalDisplay)renderHP();
@@ -733,7 +859,15 @@
   }
   const viewDir = () => [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
   // 挖、放、打用的方向。第一人称就是视线方向；第三人称镜头在右肩后面，要改成“从眼睛指向准星实际对着的那个点”，否则近处的东西打不中
-  const lookDir = () => { const d = viewDir(); return window.ThirdPerson ? ThirdPerson.aim([p.x, p.y + EYE, p.z], d, mobs) : d; };
+  let touchAim = null; // 手机：点屏幕放方块、按住挖时，方向是手指点到的那个点，不是准星
+  const lookDir = () => { if (touchAim) return touchAim; const d = viewDir(); return window.ThirdPerson ? ThirdPerson.aim([p.x, p.y + EYE, p.z], d, mobs) : d; };
+  function aimAtScreen(x, y) { // 屏幕坐标 → 从眼睛指向镜头射线碰到的那一点（第三人称镜头不在眼睛上，所以先找点再算方向）
+    if (x == null) { touchAim = null; return; }
+    const ray = new THREE.Vector3(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1, 0.5).unproject(camera).sub(camera.position).normalize();
+    const o = camera.position, hit = raycast((a, b, c) => world.get(a, b, c), [o.x, o.y, o.z], [ray.x, ray.y, ray.z], 12);
+    const to = (hit ? new THREE.Vector3(...hit.point) : o.clone()).addScaledVector(ray, hit ? 0.02 : 12), d = to.sub(new THREE.Vector3(p.x, p.y + EYE, p.z)).normalize();
+    touchAim = [d.x, d.y, d.z];
+  }
   const REACH = 4; // 挖掘、放置、目标高亮统一使用 4 格距离
   const aim = () => { const origin=[p.x,p.y+EYE,p.z], direction=lookDir(), block=raycast((x,y,z)=>world.get(x,y,z),origin,direction,REACH); return placedTorches.hit(origin,direction,block?block.t:REACH)||block; };
 
@@ -744,34 +878,71 @@
   const hitNotice=document.createElement('div');
   hitNotice.style.cssText='position:fixed;left:50%;top:calc(50% + 30px);transform:translateX(-50%);color:#fff2cb;background:#382b24cc;padding:4px 10px;border-radius:6px;pointer-events:none;display:none;font:13px system-ui';
   document.body.appendChild(hitNotice);
-  function give(id, n = 1) {
+  const pickupNotices=new PickupNotices(id=>icon(id),id=>displayName(id));
+  function give(id, n = 1, notify = true) {
+    if(QuantumRailgunCore.isBlock(id))id=QuantumRailgunCore.canonical(QuantumRailgunCore.primaryId(id));
+    if (!(inv[id] > 0) && itemSkin[id]) { delete itemSkin[id]; delete icons[id]; } // 之前没有这种剑了：新得到的是普通的
     inv[id] = (inv[id] || 0) + n;
-    if ((id < 31 || id === 32 || id === 153 || isBlock(id)) && !slots.includes(id)) { const i = slots.indexOf(0); if (i >= 0) slots[i] = id; } // 兽皮和装备不占快捷栏
+    if(notify)pickupNotices.add(id,n);
+    if ((id < 31 || id === 32 || id === 153 || isBlock(id) || TOOLS[id]) && !slots.includes(id)) { const i = slots.indexOf(0); if (i >= 0) slots[i] = id; } // 兽皮和装备不占快捷栏
     renderBar(); saveSoon();
   }
+  let throwing=false;
+  async function throwHeld(all=false){ // all：Shift+G 把这一整组都扔出去
+    const id=selectedItem();
+    if(!playing||dead||!hotbarActive||!id||!(inv[id]>0)||throwing||!window.Drops)return;
+    if(window.Net&&Net.guest&&!Net.connected)return;
+    const n=all?inv[id]:1,skin=skinFor(id);throwing=true;held=false;swing=0;inv[id]-=n;
+    const gun=window.Ranged&&Ranged.WEAPONS[id],ammo=gun?Math.min(8,inv[gun.ammo]||0):0;if(ammo)inv[gun.ammo]-=ammo; // 扔枪、弓、弩：最多 8 发弹药跟着走，接到的人马上能用（以前对方没有弹丸就打不响）
+    renderBar();saveSoon();
+    const at=Drops.landing(p,yaw);
+    if(window.Net&&Net.connected){
+      const request={...at,id,n,ammo,skin,key:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)};
+      // Retry with the same identity after a lost response; never create a second item.
+      for(;;){
+        try{const item=await Net.throwItem(request);if(!item){give(id,n,false);if(ammo)give(gun.ammo,ammo,false);}else{Drops.addShared(item);if(item.n<n)give(id,n-item.n,false);}break;} /* 旧服务器只认 1 个：没收下的放回背包，不会丢 */
+        catch(e){await new Promise(resolve=>setTimeout(resolve,1000));}
+      }
+    }else Drops.thrown(id,at,ammo,n,skin);
+    throwing=false;saveSoon();
+  }
+  const wetPath = h => { // 人在水外、准星穿过水面才碰到方块（潜在水里挖照常）
+    const o = [p.x, p.y + EYE, p.z], d = lookDir(); if (world.get(Math.floor(o[0]), Math.floor(o[1]), Math.floor(o[2])) === WATER) return false;
+    for (let t = 0; t < h.t; t += 0.1) if (world.get(Math.floor(o[0] + d[0] * t), Math.floor(o[1] + d[1] * t), Math.floor(o[2] + d[2] * t)) === WATER) return true;
+    return false;
+  };
+  let scoop = 0, scoopFill = true; const SCOOP = 0.6; // 舀水 / 倒水的手部动作还剩多久
   function digStep(dt) {
     attackCooldown=Math.max(0,attackCooldown-dt);
     hitNoticeTime=Math.max(0,hitNoticeTime-dt);hitNotice.style.display=hitNoticeTime>0?'block':'none';
     if(held&&attack()) {digKey='';digProgress=0;miningFX.reset();$('prog').style.width='0px';return;}
-    const h = held && hotbarActive && aim(), k = h ? h.x + ',' + h.y + ',' + h.z : '';
-    if(h&&h.torch){placedTorches.remove(h.torch);give(TORCH);held=false;miningFX.reset();$('prog').style.width='0px';return;}
+    let h = held && hotbarActive && aim(); if (h && wetPath(h)) h = null; const k = h ? h.x + ',' + h.y + ',' + h.z : ''; // 隔着水挖不到水底：水只能用桶舀
+    if(h&&h.torch){placedTorches.remove(h.torch);window.Net&&Net.torch(h.torch,null);give(TORCH);held=false;miningFX.reset();$('prog').style.width='0px';return;}
     if (k !== digKey) { digKey = k; digProgress = h ? blockDamage.get(h,world.get(h.x,h.y,h.z)) : 0; }
     let prog = 0;
     if (h && h.y > 0) { // y=0 是不可挖的底层
       const id = world.get(h.x, h.y, h.z);
-      digProgress = creative() ? 1 : blockDamage.dig(h,id,selectedItem(),dt); prog = digProgress; if (creative()) held = false; // 创造模式点一下挖一块 saveSoon();
+      digProgress = creative() ? 1 : blockDamage.dig(h,id,selectedItem(),dt*cityEffects.factor('mining')); prog = digProgress; if (creative()) held = false; // 创造模式点一下挖一块 saveSoon();
       miningFX.damage(h,id,prog,dt);
-      if (prog >= 1) { miningFX.break(h,id); setBlock(h.x, h.y, h.z, AIR); const got = window.Farm ? Farm.dug(h, id) : undefined; if (got === undefined) give(window.Home ? Home.dug(h, id) : id); else if (got) give(got); digKey = ''; prog = 0; }
+      if (prog >= 1) { if(window.Automation?.mine?.(h))return;miningFX.break(h,id); setBlock(h.x, h.y, h.z, AIR); const got = TransitCore.relay(id)?600:QuantumRailgunCore.isBlock(id)?QuantumRailgunCore.canonical(QuantumRailgunCore.primaryId(id)): window.Farm ? Farm.dug(h, id) : undefined; if (got === undefined) give(window.Home ? Home.dug(h, id) : id); else if (got) give(got); digKey = ''; prog = 0; }
     } else miningFX.reset();
     $('prog').style.width = prog * 40 + 'px';
   }
+  const throwableTool=id=>(id>=16&&id<=29&&id!==TORCH)||id===153||!!(window.Ranged&&Ranged.WEAPONS[id]);
   function place() {
-    const id = selectedItem(), h = aim();
-    if (window.Farm && Farm.use(h, id)) { swing = 0.3; renderBar(); return saveSoon(); }              // 种子、肥料、水桶、新植物：见 farm.js
-    if(Survival.food[id]){eatFood(id);return;}
+    if(window.Home?.sleeping)return;
+    if(window.Automation?.use()||window.Transit?.use())return;
+    if(window.QuantumRailgun?.interact()||window.CityControl?.interact())return;
+    const id = selectedItem();
+    const furnaceHit=aim();if(furnaceHit&&world.get(furnaceHit.x,furnaceHit.y,furnaceHit.z)===289&&window.Furnace){Furnace.open(furnaceHit);return;}
+    if(hotbarActive&&throwableTool(id)){throwHeld();return;}
+    const h = aim();
+    if (window.Farm && Farm.use(h, id)) { swing = 0.3; renderBar(); return saveSoon(); }
+    if (window.Blast && Blast.use(h, id)) { swing = 0.3; renderBar(); return saveSoon(); }                // 手雷、熔炉：见 blast.js              // 种子、肥料、水桶、新植物：见 farm.js
+    if(Survival.food[id]||CityCrafts.items[id]){eatFood(id);return;}
     if (window.Home && Home.use(h, id)) { swing = 0.3; renderHP(); renderBar(); return saveSoon(); } // 门、床、浆果丛、种植等：见 home.js
 
-    if(h&&id===TORCH&&inv[id]){if(placedTorches.place(h)){if(!creative())inv[id]--;swing=.3;renderBar();saveSoon();}return;}
+    if(h&&id===TORCH&&inv[id]){const key=placedTorches.place(h);if(key){window.Net&&Net.torch(key,placedTorches.records[key]);if(!creative())inv[id]--;swing=.3;renderBar();saveSoon();}return;}
     if (!h || h.torch || !isBlock(id) || !inv[id]) return;
     const x = h.x + h.n[0], y = h.y + h.n[1], z = h.z + h.n[2];
     // Check the new block itself as well as the face that was clicked.
@@ -779,7 +950,8 @@
     if(Math.hypot(p.x-nearest(p.x,x),p.y+EYE-nearest(p.y+EYE,y),p.z-nearest(p.z,z))>REACH)return;
     if (y >= H || solid(world.get(x, y, z)) || (!h.n[0] && !h.n[1] && !h.n[2])) return;
     if (x + 1 > p.x - W && x < p.x + W && y + 1 > p.y && y < p.y + PH && z + 1 > p.z - W && z < p.z + W) return; // 不能把自己埋了
-    setBlock(x, y, z, id); if (!creative()) inv[id]--; swing = 0.3; renderBar();
+    if(QuantumRailgunCore.is(id)){if(!railgunPlace({x,y,z},id))return;}else setBlock(x, y, z, id); if (!creative()) inv[id]--; swing = 0.3; renderBar();
+    if (window.Blast) Blast.placed(x, y, z, id); // 炸药放下就点着
   }
 
   // ---- 动物：方块小兽，上限 8 只，在玩家周围的露天草地上补刷，离远了消失；不存档 ----
@@ -899,7 +1071,7 @@
       ...both([0.02, 0.03, 0.03, 0.05, 0.03, 0.1, DARK])]) },
     jelly: { name: '刺水母', foe: true, hostile: true, swim: true, drift: true, lv: 2, hp: 6, dmg: 2, speed: 0.3, run: 0.3, r: 0.3, h: 0.5, drops: { 113: 1 }, geo: boxes([
       [0.36, 0.2, 0.36, 0, 0, 0, '#ff9ad8'], [0.26, 0.1, 0.26, 0, 0.14, 0, '#ffb8e6'], ...both([0.04, 0.3, 0.04, 0.1, -0.24, 0.1, '#e070c0']), ...both([0.04, 0.3, 0.04, 0.1, -0.24, -0.1, '#e070c0'])]) },
-    crab: { name: '钳蟹', foe: true, hostile: true, shell: true, lv: 3, hp: 14, dmg: 3, speed: 1.4, run: 2.6, r: 0.4, h: 0.45, meat: 0, drops: { 114: 1, 115: 1 }, geo: boxes([
+    crab: { name: '钳蟹', foe: true, hostile: true, shell: true, lv: 2, hp: 9, dmg: 2, speed: 1.4, run: 2.6, r: 0.4, h: 0.45, meat: 0, drops: { 114: 1, 115: 1 }, geo: boxes([
       [0.5, 0.2, 0.36, 0, 0.2, 0, '#c8553a'], [0.4, 0.06, 0.3, 0, 0.33, 0, '#d86a4a'], ...both([0.16, 0.14, 0.2, 0.34, 0.22, 0.2, '#d86a4a']), ...both([0.04, 0.1, 0.04, 0.1, 0.36, 0.14, '#c8553a']),
       ...both([0.05, 0.05, 0.05, 0.1, 0.43, 0.15, DARK]), ...[0.1, 0, -0.1].flatMap(z => both([0.2, 0.05, 0.05, 0.34, 0.08, z, '#a8402a']))]) },
   });
@@ -1022,7 +1194,7 @@
     if (to) { if (sp > 1e-4 && (to[0] !== m.x || to[2] !== m.z)) m.a = Math.atan2(to[0] - m.x, to[2] - m.z); m.x = to[0]; m.y = to[1]; m.z = to[2]; }
     else m.t = 0;                                                                                     // 去不了：马上换个目标
     const drag = Math.exp(-6 * dt); m.kx *= drag; m.kz *= drag;
-    if (T.hostile && !q.dn && !q.calm && (mean || T.drift) && dd < (T.reach || 1.3) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; if (!T.drift) m.a = Math.atan2(q.x - m.x, q.z - m.z); bite(q, T.dmg, T.slows, T.push && [(q.x - m.x) / (dd || 1) * T.push, (q.z - m.z) / (dd || 1) * T.push]); } // 碰到才受伤；霜灵再加 3 秒减速
+    if (T.hostile && !q.dn && !q.calm && (mean || T.drift) && dd < (T.reach || 1.3) && (!q.id?.startsWith?.('castle-guard-')||!raycast((x,y,z)=>{const b=world.get(x,y,z);return Core.PASS.has(b)?0:b;},[m.x,m.y+T.h*.55,m.z],new THREE.Vector3(q.x-m.x,q.y+1-m.y-T.h*.55,q.z-m.z).normalize().toArray(),Math.hypot(q.x-m.x,q.y+1-m.y-T.h*.55,q.z-m.z)-.35)) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; if (!T.drift) m.a = Math.atan2(q.x - m.x, q.z - m.z); bite(q, T.dmg, T.slows, T.push && [(q.x - m.x) / (dd || 1) * T.push, (q.z - m.z) / (dd || 1) * T.push]); } // 碰到才受伤；霜灵再加 3 秒减速
     if (T.cave && !covered(m.x, m.y, m.z)) { if ((m.out = (m.out || 0) + dt) > 4) m.hp = 0; } else m.out = 0; // 洞蝠离开洞穴 4 秒就散
     m.sq -= dt; m.ph += dt * 10;
     m.mobMat.emissive.setRGB(Math.max(0,m.sq)/.24*.85,0,0); if (warn && m.sq <= 0) m.mobMat.emissive.setHex(0xaa8800); // 俯冲前发亮
@@ -1069,6 +1241,10 @@
     if(MobPhysics.intersects(mob,(x,y,z)=>world.get(x,y,z))){mobMat.dispose();return;}
     mesh.position.set(mob.x,mob.y,mob.z);scene.add(mesh);mobs.push(mob);
   }
+  function castleResidentState(){
+    if(!save.castleResidents)return undefined;
+    return mobs.filter(m=>m.castleResident&&m.hp>0).map(m=>({type:m.type.name,x:m.x,y:m.y,z:m.z,hp:m.hp}));
+  }
   // —— 联机 ——（net.js 调用）主机把全部生物的状态报出去；访客照着建、挪、删
   const MOBTYPE = {}; let mobSeq = 1;
   function mobState() { return mobs.map(m => [m.id || (m.id = mobSeq++), m.type.name, +m.x.toFixed(2), +(m.y + (m.off || 0)).toFixed(2), +m.z.toFixed(2), +m.a.toFixed(2), m.hp, m.sq > 0 ? 1 : m.lunge > 0.2 ? 3 : m.warn ? 2 : 0]); }
@@ -1106,14 +1282,19 @@
     return loot;
   }
   function mobHit(id, dealt, dx, dz) { const m = mobs.find(m => m.id === id && m.hp > 0); return m ? { loot: strike(m, dealt, dx, dz), sad: !!m.type.sad } : null; }
-  function takeLoot(loot, sad) { for (const id in loot) give(+id, loot[id]); if (sad) Lang.say('Oh no. Poor moth.', false, 1.4); }
+  let lastHitAt = null; // 联机访客：自己最后打中的那只在哪里（主机把掉落发回来时，在这里落地）
+  function takeLoot(loot, sad, at) { // 掉落先落在地上，走过去才捡得起来（drops.js）；没有位置可放就直接进背包
+    at = at || (lastHitAt && performance.now() - lastHitAt.t < 4000 ? lastHitAt : null);
+    if (at && window.Drops) Drops.spawn(loot, at); else for (const id in loot) give(+id, loot[id]);
+    if (sad) Lang.say('Oh no. Poor moth.', false, 1.4);
+  }
   function tickMobs(dt) {
     if (window.Net && Net.guest) return mirrorMobs(dt);                       // 联机访客：生物由主机计算，这里只显示
     p.held = selectedItem(); p.cloak = equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; p.low = hp < MAXHP / 2; p.dn = dead; p.calm = creative(); /* 创造模式：怪物不主动攻击你，照常闲逛 */                        // 怪物看的是“最近的那个玩家”，联机时可能是别人
     const everyone = window.Net ? [p, ...Net.others()] : [p];
     const alive = everyone.filter(e => !e.dn), targets = alive.length ? alive : everyone; /* 倒下的玩家不算目标；全都倒下了才看倒下的（只为算距离，不会再咬） */
     const near = m => targets.reduce((a, b) => Math.hypot(b.x - m.x, b.z - m.z) < Math.hypot(a.x - m.x, a.z - m.z) ? b : a);
-    const bite = (q, d, slow, push) => { if (q === p) { hurt(d); if (slow) slowMe(); if (push) pushMe(push[0], push[1]); } else Net.hurt(q.id, d, slow, push); };
+    const bite = (q, d, slow, push, attacker) => { if(q.slot!==undefined&&String(q.id).startsWith('castle-guard-')){window.CastleGuards?.hurt(q,d,attacker||{x:q.x,z:q.z-1});return;} if (q === p) { hurt(d); if (slow) slowMe(); if (push) pushMe(push[0], push[1]); } else Net.hurt(q.id, d, slow, push); };
     if (!animalPreview && (spawnT -= dt) < 0) { // 夜里优先补影狼（最多 3 只），其余时间补普通动物（最多 8 只）
       spawnT = 1.5; const c = everyone[Math.floor(Math.random() * everyone.length)], keep = [p.x, p.y, p.z]; p.x = c.x; p.y = c.y; p.z = c.z; // ponytail: 刷怪函数都围着 p 找位置，联机时临时把 p 挪到被选中的玩家那里，刷完挪回来
       const foes = mobs.filter(m => m.type.foe).length;
@@ -1127,9 +1308,9 @@
       p.x = keep[0]; p.y = keep[1]; p.z = keep[2];
     }
     for (let i = mobs.length - 1; i >= 0; i--) {
-      const m = mobs[i], q = near(m);
-      if (m.hp <= 0 || Math.hypot(m.x - q.x, m.z - q.z) > R * CH + 8 || m.y < -5) { scene.remove(m.mesh); m.mobMat.dispose(); mobs.splice(i, 1); continue; }
-      if (m.type.fly || m.type.swim) { drift(m, dt, q, bite); continue; }
+      const m = mobs[i], playerTarget = near(m), q = window.CastleGuards?.targetFor?.(m,playerTarget)||playerTarget;
+      if (m.hp <= 0 || (!m.castleResident && Math.hypot(m.x - playerTarget.x, m.z - playerTarget.z) > R * CH + 8) || m.y < -5) { scene.remove(m.mesh); m.mobMat.dispose(); mobs.splice(i, 1); continue; }
+      if (m.type.fly || m.type.swim) { drift(m, dt, q, (q,d,slow,push)=>bite(q,d,slow,push,m)); continue; }
       const oldAngle=m.a;
       if ((m.t -= dt) < 0) { m.t = 1.5 + Math.random() * 3; m.walk = Math.random() < 0.65; m.a = Math.random() * 6.283; } // 闲逛
       m.detour = Math.max(0, (m.detour || 0) - dt);                                                                    // 绕路期间不被逃跑/追击的朝向覆盖
@@ -1151,7 +1332,7 @@
           chase = true; if (!m.detour) m.a = Math.atan2(q.x - m.x, q.z - m.z);
           m.walk = dd > stand || dd < stand - 0.4; back = dd < stand - 0.4; if (!m.walk) m.t = Math.max(m.t, 0.5);
         }
-        if (mean && dd < (T.still ? 1.6 : stand + 0.45) && Math.abs(m.y - q.y) < 2 && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; bite(q, T.dmg || 3); } // 够得着就扑一下，每秒一次
+        if (mean && dd < (T.still ? 1.6 : stand + 0.45) && Math.abs(m.y - q.y) < 2 && (!q.id?.startsWith?.('castle-guard-')||!raycast((x,y,z)=>{const b=world.get(x,y,z);return Core.PASS.has(b)?0:b;},[m.x,m.y+T.h*.55,m.z],new THREE.Vector3(q.x-m.x,q.y+1-m.y-T.h*.55,q.z-m.z).normalize().toArray(),Math.hypot(q.x-m.x,q.y+1-m.y-T.h*.55,q.z-m.z)-.35)) && (m.bite -= dt) < 0) { m.bite = 1; m.lunge = 0.35; bite(q, T.dmg || 3, false, null, m); } // 够得着就扑一下，每秒一次
       }
       const sp = m.walk ? (back ? -m.type.speed : m.flee > 0 || chase ? m.type.run : m.type.speed) : 0;
       const get=(x,y,z)=>world.get(x,y,z);
@@ -1179,7 +1360,8 @@
     const ray = new THREE.Vector3(tip.x, tip.y, 0.5).unproject(camera).sub(camera.position).normalize();
     return camera.position.clone().addScaledVector(ray, 1.1);
   }
-  function attack() { // 准星射线对动物包围盒；比方块近才算打中。打中返回 true。手里是弓、弩、枪时射得远，每一下用掉一发弹药（ranged.js）
+  function attack() {
+    if(window.Home?.sleeping)return true; // 准星射线对动物包围盒；比方块近才算打中。打中返回 true。手里是弓、弩、枪时射得远，每一下用掉一发弹药（ranged.js）
     if(!hotbarActive)return false;
     const item = selectedItem(), gun = window.Ranged && Ranged.WEAPONS[item];
     if (gun) {
@@ -1193,6 +1375,7 @@
       const t=MobPhysics.ray(m,o,d,bt);
       if(t!==null && (!h||t<h.t-1e-4)){best=m;bt=t;}
     }
+    for(const a of window.CastleGuards?.guards||[]){if(a.hp<=0||!window.CityControl?.hostile(a.city||'legacy'))continue;const t=MobPhysics.ray({x:a.x,y:a.y,z:a.z,a:0,bounds:{min:[-.32,0,-.32],max:[.32,1.9,.32]}},o,d,bt);if(t!==null){best={guard:a};bt=t;}}
     const rival = window.Net && Net.pkTarget(o, d, bt);                        // 联机且主机允许互相攻击：准星上更近的是别的玩家
     const power = gun ? gun.dmg : DMG[item] || 1;
     if (gun) { attackCooldown = gun.cd; if (!creative()) inv[gun.ammo]--; swing = 0.3; renderBar(); Ranged.tracer(o, d, bt, item, !best && !rival && bt >= reach - 1e-3, muzzleAt(gun)); CombatAudio.swing(); } // 射出去了：不管打没打中都用掉一发
@@ -1200,12 +1383,13 @@
       hitNotice.textContent = `${rival.name} −${dealt}`; hitNoticeTime = .9; hitNotice.style.display = 'block'; return true; }
     if (!best) return !!gun;
     if (!gun) { if(attackCooldown>0)return true; attackCooldown=.4; }
-    const front = best.type.shell && d[0] * Math.sin(best.a) + d[2] * Math.cos(best.a) < -0.3;   // 钳蟹：迎着它的正面打，只掉 1 点
-    let dealt = front ? 1 : power * (best.type.weak === item ? 2 : 1); // weak：这种工具对它伤害加倍
+    if(best.guard){swing=.3;if(window.Net?.guest)Net.guardHit(best.guard.id,power);else CastleGuards.hurt(best.guard,power,{x:p.x,z:p.z});hitNotice.textContent=`护卫 −${power} · ${Math.ceil(best.guard.hp)}/${best.guard.maxHP}`;hitNoticeTime=.9;return true;}
+    const front = best.type.shell && d[0] * Math.sin(best.a) + d[2] * Math.cos(best.a) < -0.3;   // 钳蟹：迎着它的正面打，伤害减半（以前只掉 1 点，它又总是正面追人，新手几乎打不死）
+    let dealt = front ? Math.ceil(power / 2) : power * (best.type.weak === item ? 2 : 1); // weak：这种工具对它伤害加倍
     if (best.type.plate && ![28, 29].includes(item)) dealt = Math.max(1, dealt - best.type.plate); // 黑曜卫士：每下先减 3 点；岩心镐和黑曜剑不受影响
     swing = 0.3;
-    if (window.Net && Net.guest) { best.sq = 0.15; best.hp -= dealt; Net.hit(best.id, dealt, d[0], d[2]); } // 访客：报给主机，掉落由主机发回来
-    else { const loot = strike(best, dealt, d[0], d[2]); if (loot) takeLoot(loot, best.type.sad); }
+    if (window.Net && Net.guest) { lastHitAt = { x: best.x, y: best.y, z: best.z, t: performance.now() }; best.sq = 0.15; best.hp -= dealt; Net.hit(best.id, dealt, d[0], d[2]); } // 访客：报给主机，掉落由主机发回来
+    else { const loot = strike(best, dealt, d[0], d[2]); if (loot) takeLoot(loot, best.type.sad, { x: best.x, y: best.y, z: best.z }); }
     hitNotice.textContent=`${Lang.mob(best.type.name)}${best.type.lv ? ' Lv ' + best.type.lv : ''} −${dealt} · ${Math.max(0,best.hp)}/${best.type.hp}`; // 名字、等级、这一下的伤害、剩余生命
     hitNoticeTime=.9;hitNotice.style.display='block';
     return true;
@@ -1264,6 +1448,12 @@
       [0.22, 0.22, 0.13, 0, 0.42, 0, '#d0655a'], [0.3, 0.05, 0.125, 0, 0.59, 0, '#f1d9c8']],
     [TORCH]: [[0.05, 0.5, 0.05, 0, 0.25, 0, WOOD], [0.09, 0.1, 0.09, 0, 0.54, 0, '#3a2a1a'], [0.08, 0.12, 0.08, 0, 0.64, 0, '#ff9a20'], [0.045, 0.1, 0.045, 0, 0.73, 0, '#ffe890']],
   };
+  TOOLS[466]=[[.3,.3,.3,0,.4,0,'#47272b'],[.15,.18,.32,0,.4,0,'#ff7d24'],[.17,.12,.2,0,.61,0,'#ffc868']];
+  TOOLS[290] = [[0.26, 0.3, 0.26, 0, 0.4, 0, '#4e5a3a'], [0.1, 0.08, 0.1, 0, 0.6, 0, '#6c6a66'], [0.04, 0.14, 0.04, 0.08, 0.62, 0, '#c9a23a']]; // 手雷
+  for(const id of [293,294,295,296,298])TOOLS[id]=[[.48,.62,.025,0,.45,0,'#315b83']];
+  for(const id of [...CerealCrops.list.flatMap(d=>[d.product,d.seed]),...Array.from({length:8},(_,i)=>450+i),...Array.from({length:12},(_,i)=>400+i),300,301,302,303,304,305,306,307,308,309,320,321,322,323,324,325,360,361])TOOLS[id]=[[.3,.4,.3,0,.4,0,'#368b9c']];
+  TOOLS[297]=[[.3,.06,.3,0,.4,0,'#e4b74a']];
+  TOOLS[291] = [[0.4, 0.15, 0.23, 0, 0.43, 0, '#c8ccd0']]; TOOLS[292] = [[0.4, 0.15, 0.23, 0, 0.43, 0, '#e6c24a']]; // 铁锭、金锭（熔炉炼出来的）
   for (let i = 0; i < 6; i++) TOOLS[273 + i] = TOOLS[MEAT].map(q => [...q.slice(0, 6), q[6] === '#b8463c' ? '#8a5230' : q[6] === '#d0655a' ? '#a8683c' : q[6] === '#f1d9c8' ? '#6a3c20' : q[6]]); // 273–278 烤熟的肉：同一个模型，烤成焦褐色
   TOOLS[279] = TOOLS[112].map(q => [...q.slice(0, 6), q[6] === '#7a9aa8' ? '#b8843c' : q[6] === '#5a7a88' ? '#8a5a28' : q[6]]);                                                        // 烤鱼
   for (const [id, a, b] of [[268, '#d89a8a', '#e8b4a4'], [269, '#8a2e2a', '#a8443c'], [270, '#a04a34', '#bc6248'], [271, '#c06a4a', '#d4866a'], [272, '#e08a8a', '#f0a8a4']]) TOOLS[id] = TOOLS[MEAT].map(q => [...q.slice(0, 6), q[6] === '#b8463c' ? a : q[6] === '#d0655a' ? b : q[6]]); // 各种肉：和生肉同一个模型，换颜色（兔肉浅粉、鹿肉深红、羚羊肉红褐、狐肉橙红、猪肉粉）
@@ -1309,11 +1499,13 @@
   const handScene = new THREE.Scene(), handCam = new THREE.PerspectiveCamera(50, 1, 0.01, 10), holder = new THREE.Group();
   const handLight = new THREE.DirectionalLight(0xfff2d8, 0.6); handLight.position.set(-1, 2, 1.5);
   const handAmb = new THREE.AmbientLight(0xffffff, 0.75);
-  const handGlow=new THREE.PointLight(0xffb65e,0,3,2);handGlow.position.set(.2,.1,-.7);
+  const handGlow=new THREE.PointLight(0xffb65e,0,3,2),HAND_LOCAL=1.6; // HAND_LOCAL：附近光源照到手上的倍数；补光离手约 0.7 格，衰减后约剩 0.6，乘回来和旁边方块差不多亮handGlow.position.set(.2,.1,-.7);
   handScene.add(handAmb, handLight, holder,handGlow);
   holder.position.set(0.5, -0.5, -1); holder.scale.setScalar(0.72);
   const heldMat = new THREE.MeshLambertMaterial({ map: tex });
   let heldId = -1, swing = 0, heldHand=null;
+  window.addEventListener('hand-style-changed',()=>{const id=heldId;if(id===-1)return;heldId=-1;setHeld(id);});
+  function tryBed(includeFurnace=false){if(window.CityControl?.interact()){held=false;return true;}const h=aim();if(includeFurnace&&h&&world.get(h.x,h.y,h.z)===289&&window.Furnace){held=false;return Furnace.open(h);}if(h&&[66,67].includes(world.get(h.x,h.y,h.z))){Home.use(h,0);held=false;return true;}return !!window.Home?.sleeping;}
   function beginSwing(){if(!hotbarActive||(window.Ranged&&Ranged.WEAPONS[selectedItem()]))return; /* 远程武器不挥：射出去那一下才有后坐（attack 里设 swing） */ swing=.3;if(selectedItem()===SWORD||selectedItem()===SWORD2)CombatAudio.swing();}
   const AIM_YAW = 0.001; // 弓、弩、枪：手不带着转（模型自己在 setHeld 里摆正，射出去的方向顺着视线，和准星在一条线上）。写成极小的数是因为下面用 || 取默认值
   const HELD_YAW = { 261: AIM_YAW, 262: AIM_YAW, 263: AIM_YAW, [PICK]: 0.3, [PICK2]: 0.3, 19: 0.3, 28: 0.3, 16: 0.3, [AXE]: Math.PI + 0.3, 17: Math.PI + 0.3 }; // 镐头沿前后方向握持，镐尖顺着挥动方向
@@ -1330,6 +1522,7 @@
     hand.rotation.y=-(HELD_YAW[id] || -0.9);
     holder.add(hand);
     if (!id) return;
+    if(skinFor(id)!=='default')return holder.add(WeaponSkins.create(skinFor(id)));
     if (id === TORCH) return holder.add(TorchTool.create(pack==='natural'));
     if (id === PICK) return holder.add(StonePick.create(pack === 'natural'));
     if (id === PICK2) return holder.add(IronPick.create(pack === 'natural'));
@@ -1341,6 +1534,8 @@
       return holder.add(m);
     }
     if (!isBlock(id)) return holder.add(ItemArt.create(id,TOOLS[id],pack==='natural'));
+    if(window.Automation&&AutomationCore.isDevice(id)){const m=Automation.model(id);m.scale.setScalar(.42);m.position.y=.14;holder.add(m);return;}
+    if(window.Transit&&[600,610,611,612].includes(id)){const m=Transit.model(id);m.scale.setScalar(.42);m.position.y=.14;holder.add(m);return;}
     if(BuildingIcons.supports(id)){
       const model=BuildingIcons.create(id,tex),bounds=new THREE.Box3().setFromObject(model),height=bounds.max.y-bounds.min.y;
       model.scale.setScalar(.36/Math.max(1,height));model.position.y=.14;holder.add(model);return;
@@ -1350,8 +1545,9 @@
     holder.add(new THREE.Mesh(g, heldMat));
   }
   const icons = {};
-  function icon(id) { // 方块取贴图集；工具把模型的方块列表斜着投影成带描边的小图
+  function icon(id) { if(window.Automation&&AutomationCore.isDevice(id))return Automation.icon(id);if(window.Transit&&[600,610,611,612].includes(id))return Transit.icon(id); // 方块取贴图集；工具把模型的方块列表斜着投影成带描边的小图
     if (icons[id]) return icons[id];
+    // Inventory and crafting identify the base item; weapon skins affect held models only.
     if(BuildingIcons.supports(id))return icons[id]=BuildingIcons.draw(id,tex);
     if(id===TORCH)return icons[id]=StonePick.icon(pack==='natural',natural=>TorchTool.create(natural,false),false);
     if(id===SWORD || id===SWORD2)return icons[id]=StonePick.icon(pack==='natural',id===SWORD2?StoneTools.ironSword:StoneTools.sword,false);
@@ -1397,7 +1593,7 @@
   };
   const cell = (id, label, bare) => {
     const tier = [PICK,AXE,SHOVEL,SWORD].includes(id) ? 'stone' : [PICK2,SWORD2].includes(id) ? 'iron' : '';
-    return `<div ${id ? `style="background-image:url(${icon(id)})" title="${itemName(id)}"` : ''}><span>${label}</span>${materialMarks[tier] || ''}${!bare && id && (id < 20 || id >= 30) ? `<b>${inv[id] || 0}</b>` : ''}</div>`;
+    return `<div ${id ? `style="background-image:url(${icon(id)})" title="${displayName(id)}"` : ''}><span>${label}</span>${materialMarks[tier] || ''}${!bare && id && (id < 20 || id === TORCH || id >= 30) ? `<b>${inv[id] || 0}</b>` : ''}</div>`;
   };
   function renderBar() {
     for (let i = 0; i < slots.length; i++) if (slots[i] && !(inv[slots[i]] > 0)) slots[i] = 0; // 用完的物品从快捷栏消失（手里也跟着空）
@@ -1411,61 +1607,95 @@
 <path d="M12 12q8-3 16 0M11 18q9 5 18 0M11 25v7q0 1 2 1h14q2 0 2-1v-7" fill="none" stroke="#cfb893" stroke-opacity=".6" stroke-width=".7" stroke-dasharray="1.3 1.4"/>
 <path d="M17 17h6v15h-6Z" fill="#574536" stroke="#3b322a" stroke-width=".8"/>
 <rect x="17" y="23" width="6" height="5" rx=".8" fill="#b7aa87" stroke="#423d33" stroke-width=".8"/><rect x="18.4" y="24.2" width="3.2" height="2.6" rx=".3" fill="#584a37"/><path d="M20 24v3" stroke="#d3c3a0" stroke-width=".8"/>
-</svg></button>`; [...bar.children].slice(0,9).forEach((slot,i)=>{slot.dataset.slot=i;slot.setAttribute('role','button');slot.tabIndex=0;slot.setAttribute('aria-label',`Slot ${i+1}: ${itemName(slots[i]) || 'empty'}`);slot.setAttribute('aria-pressed',String(hotbarActive&&i===sel));}); if(hotbarActive)bar.children[sel].classList.add('on'); setHeld(hotbarActive?selectedItem():null); }
+</svg></button>`; [...bar.children].slice(0,9).forEach((slot,i)=>{slot.dataset.slot=i;slot.setAttribute('role','button');slot.tabIndex=0;slot.setAttribute('aria-label',`Slot ${i+1}: ${itemName(slots[i]) || 'empty'}`);slot.setAttribute('aria-pressed',String(hotbarActive&&i===sel));}); if(hotbarActive)bar.children[sel].classList.add('on'); setHeld(hotbarActive?selectedItem():null);mobileControls.refreshUse(); }
   function select(i,toggle=true) {
-    const next=(i+9)%9;hotbarActive=!(toggle&&hotbarActive&&next===sel);sel=next;
+    const was=selectedItem(),back=onBack(),next=(i+9)%9;hotbarActive=!(toggle&&hotbarActive&&next===sel);sel=next;
+    if(BLADES.includes(was)&&selectedItem()!==was)sheathed=was;if(onBack()!==back)sheathAt=performance.now(); // 收剑/拔剑：第三人称播一下伸手到肩后的动作
     held=false;swing=0;digProgress=0;digKey='';miningFX.reset();$('prog').style.width='0px';
     renderBar();if(bagOpen)renderBag();saveSoon();if(hotbarActive)Lang.auto(itemName(selectedItem()));
   }
   function useItem(id) { // 背包里点物品：装备 → 穿上；其余 → 放进当前选中的快捷栏格（已在栏里就交换）
-    if (ARMOR[id]) { const part = ARMOR[id][0]; inv[id]--; if (equip[part]) give(equip[part]); equip[part] = id; }
+    if (ARMOR[id]) { const part = ARMOR[id][0]; inv[id]--; if (equip[part]) give(equip[part],1,false); equip[part] = id; }
     else if (id !== HIDE) { const j = slots.indexOf(id); if (j >= 0) slots[j] = slots[sel]; slots[sel] = id; hotbarActive=true; }
     renderBar(); renderHP(); renderBag(); saveSoon();
   }
+  // 配方里写的“橡木板”（8）用哪种木板都行；写的“橡木原木”（6）用哪种原木都行（做木板的配方除外，各做各的）
+  const ANY = { 8: Core.WOODS.map(w => w.plank), 6: Core.WOODS.map(w => w.log) };
+  const pool = (id, out) => ANY[id] && !(id === 6 && ANY[8].includes(out)) ? ANY[id] : null;
+  const have = (id, out) => { const p = pool(id, out); return p ? p.reduce((n, k) => n + (inv[k] || 0), 0) : inv[id] || 0; };
+  const take = (id, n, out) => { for (const k of pool(id, out) || [id]) { const u = Math.min(n, inv[k] || 0); inv[k] = (inv[k] || 0) - u; n -= u; if (!n) break; } };
+  const needName = (id, out) => pool(id, out) ? (id === 8 ? 'plank' : 'log') : itemName(id);
+  const craftCategory=id=>ARMOR[id]||[48].includes(id)?'gear':isBlock(id)?'building':[23,26,27,29,153,261,262,263,264,265].includes(id)?'weapons':[16,17,18,19,20,21,22,25,28,49,106,107,108,109].includes(id)?'tools':'other';
+  const recipeTip=document.createElement('div');recipeTip.id='recipeTip';recipeTip.hidden=true;recipeTip.setAttribute('role','status');$('bag').append(recipeTip);
+  let recipeTipTimer;
+  function explainRecipe(button){
+    const id=+button.dataset.explain,word=button.dataset.word||itemName(id),cn=button.dataset.generic==='true'?(id===8?'木板，任意木材':'木头，任意木材'):(Lang.chinese(id)||word);
+    Lang.say(word,false);
+    recipeTip.replaceChildren();const en=document.createElement('strong'),zh=document.createElement('span');en.textContent=word;zh.textContent='（'+cn+'）';recipeTip.append(en,zh);recipeTip.hidden=false;
+    const r=button.getBoundingClientRect();recipeTip.style.left=Math.max(8,Math.min(innerWidth-recipeTip.offsetWidth-8,r.left))+'px';recipeTip.style.top=Math.max(8,r.top-recipeTip.offsetHeight-6)+'px';
+    clearTimeout(recipeTipTimer);recipeTipTimer=setTimeout(()=>recipeTip.hidden=true,3000);
+  }
+  let inventoryFilter='all';
+  const inventoryCategory=id=>Survival.food[id]||CityCrafts.items[id]?'food':craftCategory(id);
   function renderBag() { // 左：角色装备和属性；中：27 格背包 + 快捷栏；右：合成
-    const ids = Object.keys(inv).map(Number).filter(id => inv[id] > 0);
+    const ids = Object.keys(inv).map(Number).filter(id => inv[id] > 0 && (inventoryFilter==='all'||inventoryCategory(id)===inventoryFilter));
+    if(materialPreview&&new URLSearchParams(location.search).has('cityReview'))ids.sort((a,b)=>{const x=CityCrafts.items[a],y=CityCrafts.items[b];return (x?.base||a)-(y?.base||b)||(x?.gradeIndex||0)-(y?.gradeIndex||0);});
     $('grid').innerHTML = Array.from({ length: Math.max(45, Math.ceil(ids.length / 9) * 9) }, (_, i) => cell(ids[i] || 0, '')).join('');
     [...$('grid').children].forEach((d, i) => { if (ids[i]) d.onclick = () => useItem(ids[i]); });
     $('hot').innerHTML = slots.map((id, i) => cell(id, i + 1)).join(''); if(hotbarActive)$('hot').children[sel].classList.add('on');
     [...$('hot').children].forEach((d, i) => { d.onclick = () => select(i); });
     $('equip').innerHTML = PART_ORDER.map(i => cell(equip[i], equip[i] ? '' : PARTS[i], true)).join('');
-    [...$('equip').children].forEach((d, k) => { const i = PART_ORDER[k]; d.onclick = () => { if (equip[i]) { const id = equip[i]; equip[i] = 0; give(id); renderHP(); renderBag(); } }; }); // 点一下脱下
-    $('stats').innerHTML = `<b>HP</b> ${Math.ceil(hp)} / ${MAXHP}<br><b>Armor</b> ${armor()} (blocks ${armor() * 4}%)<br><b>Attack</b> ${DMG[selectedItem()] || 1}<br><b>Holding</b> ${itemName(selectedItem())}`;
+    [...$('equip').children].forEach((d, k) => { const i = PART_ORDER[k]; d.onclick = () => { if (equip[i]) { const id = equip[i]; equip[i] = 0; give(id,1,false); renderHP(); renderBag(); } }; }); // 点一下脱下
+    $('stats').innerHTML = `<dt>HP</dt><dd>${Math.ceil(hp)} / ${MAXHP}</dd><dt>Armor</dt><dd>${armor()} <small>· blocks ${armor() * 4}%</small></dd><dt>Attack</dt><dd>${DMG[selectedItem()] || 1}</dd><dt>Holding</dt><dd>${itemName(selectedItem())}</dd>`;
     $('craft').innerHTML = RECIPES.map(([out, n, need], i) => {
-      const ok = Object.keys(need).every(id => (inv[id] || 0) >= need[id]) && !(out >= 20 && !isBlock(out) && ![264, 265, 266, 267].includes(out) && (inv[out] || equip.includes(out))); // 工具和装备已有就不能再做；方块、弹药和材料不限
-      return `<button data-i="${i}" ${ok ? '' : 'disabled'}><img src="${icon(out)}">${itemName(out)}${n > 1 ? ' ×' + n : ''}<small>${Object.keys(need).map(id => itemName(+id) + '×' + need[id]).join(' + ')}</small></button>`;
+      const workshop=CityCrafts.cityFor(out);
+      const ok = !workshop && Object.keys(need).every(id => have(+id, out) >= need[id]) && !(out >= 20 && !isBlock(out) && ![TORCH, 264, 265, 266, 267, 300, 301, 302, 303].includes(out) && (inv[out] || equip.includes(out))); // 工具和装备已有就不能再做；方块、弹药和材料不限
+      const materials=Object.keys(need).map(key=>{
+        const id=+key,owned=have(id,out),required=need[id],name=needName(id,out);
+        const representative=(pool(id,out)||[id]).find(k=>inv[k]>0)||id;
+        return `<button type="button" data-explain="${id}" data-word="${name}" data-generic="${!!pool(id,out)}" class="recipe-material${owned<required?' missing':''}" title="${Lang.display(name)}: ${owned} / ${required}" aria-label="${name}: ${owned} / ${required}${owned<required?' · not enough':''}"><img src="${icon(representative)}" alt=""><span>${owned}<span class="recipe-required"> / ${required}</span></span></button>`;
+      }).join('');
+      return `<div class="recipe-row" data-i="${i}" data-category="${craftCategory(out)}" data-ready="${ok}"><button type="button" class="recipe-result" data-explain="${out}" aria-label="Read ${itemName(out)}"><img src="${icon(out)}" alt=""><span title="${displayName(out)}">${displayName(out)}${n > 1 ? ' ×' + n : ''}</span></button><span class="recipe-materials">${materials}</span><button type="button" class="recipe-make" aria-label="Craft ${itemName(out)}" ${ok?'':'disabled'}>${workshop?'前往'+workshop:'合成'}</button></div>`;
     }).join('');
-    for (const b of $('craft').children) b.onclick = () => {
+    for(const button of $('craft').querySelectorAll('[data-explain]'))button.onclick=()=>explainRecipe(button);
+    for (const b of $('craft').children) b.querySelector('.recipe-make').onclick = () => {
       const [out, n, need] = RECIPES[b.dataset.i];
-      for (const id in need) inv[id] -= need[id];
-      give(out, n); renderBag();
+      if(CityCrafts.cityFor(out)||b.dataset.ready!=='true'||!Object.keys(need).every(id=>have(+id,out)>=need[id]))return;
+      recipeTip.hidden=true;
+      for (const id in need) take(+id, need[id], out);
+      give(out, n); CombatAudio.craft(); renderBag();
     };
     if (window.Creative) Creative.render(); // 创造模式：合成区换成全部方块（creative.js）
   }
-  let bagOpen = false;
+  let bagOpen = false, furnaceOpen=false;
+  function furnaceModal(on,resume=true){furnaceOpen=on;if(on){settingsOpen=false;setPlaying(false);if(document.pointerLockElement)document.exitPointerLock();}else if(resume)lock(mobileControls.mobile);else setPlaying(false);}
   const lock = (touch=false) => { if(touch || mobileControls.mobile)return setPlaying(true); const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); };
   function toggleBag(touch=false) {
+    if(furnaceOpen)return;
     bagOpen = !bagOpen; $('bag').classList.toggle('off', !bagOpen);
     if (!bagOpen) return lock(touch);
-    renderBag();
+    window.resetInventoryCategory?.();renderBag();
     if (document.pointerLockElement) document.exitPointerLock();
     setPlaying(false); // 不等“锁定已解除”的通知：背包一打开就停下来、把鼠标放出来
   }
 
   // ---- 输入 ----
   const cv = renderer.domElement;
-  let playing = false;
+  let playing = false, pickupPreviewDone=false;
   function setPlaying(on) {
     if(on && mobileControls.mobile && innerHeight>innerWidth)on=false;
+    window.BackgroundMusic?.setPlaying(on,on&&!hasStarted&&newMusicWorld);
     if(on){hasStarted=true;settingsOpen=false;document.body.classList.add('entered');saveSoon();}
-    else if(hasStarted&&!bagOpen)settingsOpen=true;
+    else if(hasStarted&&!bagOpen&&!furnaceOpen)settingsOpen=true;
     $('card').hidden=!settingsOpen;$('launchCard').hidden=settingsOpen;
-    playing = on; held = false; document.body.classList.toggle('playing',on); if(!on)mobileControls.reset(); $('menu').classList.toggle('off', on || bagOpen);
+    playing = on; held = false; document.body.classList.toggle('playing',on); if(!on)mobileControls.reset(); $('menu').classList.toggle('off', on || bagOpen || furnaceOpen);
     digProgress=0; digKey=''; miningFX.reset(); $('prog').style.width='0px';
     cv.style.cursor = on ? 'none' : ''; // 降级模式（没拿到鼠标锁定）下也隐藏光标
+    if(on&&!pickupPreviewDone&&materialPreview&&new URLSearchParams(location.search).get('pickupreview')==='1'){pickupPreviewDone=true;give(4);give(4);give(32,3);setTimeout(()=>give(6,1),700);}
     if (on) { last = 0; schedule(); } else { for (const k in keys) keys[k] = false; saveNow(); }
   }
   $('start').onclick = e => lock(e.pointerType==='touch');
+  $('refreshBtn').onclick=()=>{if(saveNow()===false){Lang.say('Could not save. Please try again.',false,2);return;}location.reload();};
   $('settingsBtn').onclick=()=>{
     settingsOpen=true;$('card').hidden=false;$('launchCard').hidden=true;
     if(bagOpen){bagOpen=false;$('bag').classList.add('off');}
@@ -1531,14 +1761,20 @@
     if(e.target.closest('#openBag')){e.stopPropagation();toggleBag(e.pointerType==='touch');}
   });
   bar.addEventListener('keydown',e=>{const slot=e.target.closest('[data-slot]');if(slot&&(e.key==='Enter'||e.key===' ')){e.preventDefault();select(+slot.dataset.slot);}});
-  $('closeBag').onclick=e=>toggleBag(e.pointerType==='touch');
+  const closeBag=e=>{e.preventDefault();e.stopPropagation();if(bagOpen)toggleBag(mobileControls.mobile||e.pointerType==='touch');};
+  $('closeBag').onclick=closeBag;
+  $('closeBag').addEventListener('pointerup',e=>{if(e.pointerType==='touch')closeBag(e);});
   const mobileControls=new MobileControls(cv,{
     playing:()=>playing,
     move:(x,forward)=>{touchMove.x=x;touchMove.forward=forward;},
     key:(code,on)=>{touchKeys[code]=on;},
     look:(dx,dy)=>{yaw-=dx*.005;pitch=Math.max(-1.55,Math.min(1.55,pitch-dy*.005));},
-    dig:on=>{held=on;if(on){beginSwing();attack();}else{digProgress=0;digKey='';miningFX.reset();$('prog').style.width='0px';}},
-    place:()=>place()
+    dig:on=>{if(on&&tryBed())return;held=on;if(on){beginSwing();attack();}else{digProgress=0;digKey='';miningFX.reset();$('prog').style.width='0px';}},
+    throwing:()=>hotbarActive&&throwableTool(selectedItem())&&inv[selectedItem()]>0,
+    food:()=>hotbarActive&&(Survival.food[selectedItem()]||CityCrafts.items[selectedItem()])&&inv[selectedItem()]>0?selectedItem():0,
+    place:()=>place(),
+    drop:()=>throwHeld(),
+    aimAt:(x,y)=>aimAtScreen(x,y)
   });
   $('reset').onclick = () => { if (confirm('Clear the world and start again?')) { hasStarted=false;clearTimeout(saveTimer);removeEventListener('pagehide', saveNow); localStorage.removeItem(SAVE); if(selectedSave===1)localStorage.removeItem(OLD); location.reload(); } };
   $('view').oninput = e => { setView(+e.target.value); saveSoon(); };
@@ -1562,40 +1798,46 @@
   };
   document.addEventListener('pointerlockchange', () => {
     const locked = document.pointerLockElement === cv;
-    if (locked && (bagOpen || settingsOpen)) return document.exitPointerLock(); // 背包或设置开着的时候不该锁鼠标（比如刚关背包又马上打开，上一次的锁定请求才生效）：马上放开
+    if (locked && (bagOpen || settingsOpen || furnaceOpen)) return document.exitPointerLock(); // 背包或设置开着的时候不该锁鼠标（比如刚关背包又马上打开，上一次的锁定请求才生效）：马上放开
     setPlaying(locked);
   });
   // 拿不到鼠标锁定（内嵌预览窗格，或 Esc 后 1 秒内重进）时降级：不锁鼠标照样玩，方向键也能转视角
   let lockHintShown = false, lockTried = 0;
   document.addEventListener('pointerlockerror', () => {
-    if (!playing && !bagOpen && !settingsOpen) setPlaying(true); // 已经在玩就别重置：setPlaying 会松开“按住”的状态，长按挖掘会被打断。背包或设置开着时也不进入游玩，否则鼠标会消失
+    if (!playing && !bagOpen && !settingsOpen && !furnaceOpen) setPlaying(true); // 已经在玩就别重置：setPlaying 会松开“按住”的状态，长按挖掘会被打断。背包或设置开着时也不进入游玩，否则鼠标会消失
     if (!lockHintShown) { lockHintShown = true; $('msg').textContent = 'The mouse is not locked here. Move it to the edge to keep turning, or open this page in Chrome.'; setTimeout(() => { $('msg').textContent = ''; }, 7000); }
   });
   // 没锁住鼠标时光标会和准星分开、容易滑出窗口。补救：光标靠近窗口边缘就继续往那边转（不用再往外推）；每次点击画面都再试一次锁定。
   let edgeX = 0, edgeY = 0;
   document.addEventListener('mousemove', e => {
+    if(!playing||mobileControls.mobile||document.pointerLockElement||e.target!==cv){edgeX=edgeY=0;return;}
     const m = 0.14, fx = e.clientX / innerWidth, fy = e.clientY / innerHeight;
     edgeX = fx < m ? (fx - m) / m : fx > 1 - m ? (fx - 1 + m) / m : 0; edgeY = fy < m ? (fy - m) / m : fy > 1 - m ? (fy - 1 + m) / m : 0;
   });
   document.addEventListener('mouseleave', () => { edgeX = edgeY = 0; });
   document.addEventListener('mousemove', e => {
-    if (!playing || mobileControls.mobile || animalPreview || waterPreview) return; // 测试场景固定鼠标视角，便于操作测试按钮；方向键仍可转动
+    if (!playing || mobileControls.mobile || animalPreview || waterPreview) return;
+    if(document.pointerLockElement!==cv&&e.target!==cv)return; // Unlocked previews: moving over UI must not turn the camera.
     yaw -= e.movementX * 0.0022;
     pitch = Math.max(-1.55, Math.min(1.55, pitch - e.movementY * 0.0022));
   });
   cv.addEventListener('mousedown', e => {
     if (!playing || mobileControls.mobile) return;
     if (!document.pointerLockElement && performance.now() - lockTried > 3000) { lockTried = performance.now(); const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } // 没锁住：隔 3 秒以上的点击再试一次，不是每次按下都试
-    if (e.button === 2 || (e.button === 0 && e.ctrlKey)) place(); else if (e.button === 0) {held=true;beginSwing();attack();}
+    if (e.button === 2 || (e.button === 0 && e.ctrlKey)) place(); else if (e.button === 0) {if(!e.shiftKey&&tryBed(true))return;held=true;beginSwing();attack();}
   });
   addEventListener('mouseup', () => { if(mobileControls.mobile)return; held = false; digProgress=0; digKey=''; miningFX.reset(); $('prog').style.width='0px'; schedule(); });
   cv.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('keydown', e => {
+    if(furnaceOpen){if(e.code==='Escape'||e.code==='KeyE'){e.preventDefault();if(window.CityControl?.opened)CityControl.close();else if(window.QuantumRailgun?.opened)QuantumRailgun.close();else if(window.Home?.chestOpened)Home.closeChest();else if(window.Automation?.opened)Automation.close();else if(window.Transit?.opened)Transit.close();else Furnace.close();}return;}
     if(e.code==='Escape'&&settingsOpen){e.preventDefault();return closeSettings();}
     if (e.code === 'KeyE' && (playing || bagOpen)) return toggleBag();
     if (bagOpen && e.code === 'Escape') { bagOpen = false; $('bag').classList.add('off'); return setPlaying(false); }
     if (!e.repeat && e.code >= 'Digit1' && e.code <= 'Digit9' && (playing || bagOpen)) select(+e.code[5] - 1);
     if (!playing) return;
+    if(e.code==='KeyF'&&!mobileControls.mobile&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName)&&!e.target?.isContentEditable){if(window.Automation?.interact?.()||window.Transit?.interact()||window.QuantumRailgun?.trigger()||window.CityControl?.interactNearby()){e.preventDefault();held=false;return;}}
+    if(e.code==='KeyX'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){if(BLADES.includes(selectedItem()))select(sel);else{const i=slots.indexOf(onBack());if(i>=0)select(i,false);}return;}
+    if((e.code==='KeyQ'||e.code==='KeyG')&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();throwHeld(e.shiftKey);return;}
     if (e.code === 'Escape' && !document.pointerLockElement) return setPlaying(false);
     keys[e.code] = true;
     if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
@@ -1613,8 +1855,14 @@
     if (document.hidden) return;
     if (last && t - last < 15) return schedule();   // 120Hz 屏降到 60
     const dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016; last = t;
-    if (playing) { if (!dead) { step(dt); digStep(dt); } miningFX.update(dt); tickMobs(dt); updateWater(dt); time += dt; }
+    if (playing) { if (!dead && !window.Home?.sleeping) { step(dt); digStep(dt); } miningFX.update(dt); tickMobs(dt); updateWater(dt); if(!(window.Net&&Net.guest))time += dt; }
+    if(playing&&!dead){const regen=cityEffects.tick(dt);if(regen){hp=Math.min(MAXHP,hp+regen);renderHP();}}
+    if(playing&&!dead)HerbFarming.tick(dt);
     if(playing)TorchTool.update(dt);
+    HerbFarming.visual(dt);
+    window.CityControl?.update(dt);
+    if(playing)window.CastleGuards?.update(dt);
+    if(playing){window.CastleTown?.update(dt);window.ExplorationCastles?.update();}
     const detachedTorches=placedTorches.update(meshes,pack==='natural');if(detachedTorches)give(TORCH,detachedTorches);
     if(playing && foliage.update(dt) && hq)renderer.shadowMap.needsUpdate=true;
     updateChunks();
@@ -1624,6 +1872,7 @@
       return true;
     });
     camera.position.set(p.x, p.y + EYE, p.z); camera.rotation.set(pitch, yaw, 0);
+    if(materialPreview&&new URLSearchParams(location.search).has('architectureReview')){const s=save.exploration.sites[Math.min(4,+new URLSearchParams(location.search).get('discoveryReview')||0)];camera.position.set(s.x+94,(s.base||30)+58,s.z+125);camera.rotation.set(-.35,.73,0);}
     updateSky();
     holder.updateMatrixWorld(true);torchWorld.set(0,.68,0);holder.localToWorld(torchWorld);
     torchWorld.applyQuaternion(camera.quaternion).add(camera.position);
@@ -1631,19 +1880,29 @@
     const torchHit=raycast((x,y,z)=>world.get(x,y,z),camera.position.toArray(),torchDirection.toArray(),torchDistance);
     if(torchHit)torchWorld.copy(camera.position).addScaledVector(torchDirection,Math.max(0,torchHit.t-.18));
     if(lighting.update(playing?dt:0,selectedItem()===TORCH,torchWorld,dayK)&&hq)renderer.shadowMap.needsUpdate=true;
+    window.BackgroundMusic?.update(dt,dayK,p.y+EYE<Core.heightAt(p.x,p.z)-2);
     const handSky=lighting.skyAt(p.x,p.y+EYE,p.z);handAmb.color.multiplyScalar(handSky);handLight.intensity*=handSky;
     for(const mob of mobs)if(mob.mobMat.userData.skyExposure)mob.mobMat.userData.skyExposure.value=lighting.skyAt(mob.x,mob.y+mob.type.h,mob.z);
-    handGlow.intensity=selectedItem()===TORCH?lighting.torch.intensity*.3:0;
+    handGlow.intensity=(selectedItem()===TORCH?lighting.torch.intensity*.3:0)+lighting.localAt(camera.position)*HAND_LOCAL; // 旁边放着的火把、灯、别人手里的火把也照亮自己的手和工具
     if (hq) updateShadow();
     const h = aim(); box.visible = !!h; if (h) box.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5);
-    if (playing) Lang.look(h ? (window.Home && Home.label(h)) || itemName(h.torch?TORCH:world.get(h.x, h.y, h.z)) : '', t, [p.x, p.y + EYE, p.z], lookDir(), mobs, h ? h.t : 6); // 对准显示英文名
-    if (window.ThirdPerson) ThirdPerson.apply(camera, dt); // 第三人称：把镜头退到身后，画出自己的小人（avatar.js）
+    if (playing) Lang.look(h ? window.HerbFarming?.label(h) || (window.Home && Home.label(h)) || itemName(h.torch?TORCH:world.get(h.x, h.y, h.z)) : '', t, [p.x, p.y + EYE, p.z], lookDir(), mobs, h ? h.t : 6, h ? [h.x,h.y,h.z,h.torch?'torch':world.get(h.x,h.y,h.z)].join(',') : ''); // 名称显示两秒；更换目标后重新计时
+    if (window.ThirdPerson) ThirdPerson.apply(camera, dt);
+    window.Home?.sleepCamera(camera); // 第三人称：把镜头退到身后，画出自己的小人（avatar.js）
+    window.QuantumRailgun?.beforeRender(camera);
     renderer.render(scene, camera);
+    window.QuantumRailgun?.afterRender(camera);
     const swordHeld=[SWORD,SWORD2,29,153].includes(heldId),miningHeld=[PICK,PICK2,AXE,SHOVEL,16,17,18,19,28].includes(heldId);
     swing = Math.max(0, swing - dt*(swordHeld?.65:miningHeld?.78:1)); if (held && hotbarActive && !swing) beginSwing();
     const handX=Math.min(.5,handCam.aspect*(heldId===PICK||heldId===PICK2?.09:.24));
     holder.position.set(handX,-.43,-1);
-    if(swordHeld){
+    scoop = Math.max(0, scoop - dt);
+    if(scoop>0){
+      // 舀水：桶往前下方一探、口朝前倾进水里，再提上来端平；倒水：桶往前一倾，水倒出去，再收回
+      const u=1-scoop/SCOOP,dip=Math.sin(u*Math.PI),tilt=scoopFill?Math.sin(Math.min(1,u*1.6)*Math.PI):Math.sin(u*Math.PI);
+      holder.position.set(handX-dip*.12,-.43-(scoopFill?dip*.22:dip*.05),-1-dip*.15);
+      holder.rotation.set(-.25-tilt*(scoopFill?1.1:.9),HELD_YAW[heldId]||-.9,.12+tilt*.25);
+    }else if(swordHeld){
       // Shoulder-driven diagonal slash: short wind-up, fast cut, slower recovery.
       const phase=swing>0?1-swing/.3:0;
       const poses=[
@@ -1681,7 +1940,7 @@
     HandMotion.update(heldHand,holder,swing>0?1-swing/.3:0,swordHeld);
     FirstPersonHand.update(heldHand,holder); // 前臂每帧从手腕指向固定的手肘位置
     if(window.Ranged)Ranged.offhand(holder,hotbarActive&&!(window.ThirdPerson&&ThirdPerson.on)?heldId:0,attackCooldown); // 弓、弩、枪：画出另一只手（双手持握）
-    if (holder.children.length && !(window.ThirdPerson && ThirdPerson.on)) { renderer.autoClear = false; renderer.clearDepth(); renderer.render(handScene, handCam); renderer.autoClear = true; }
+    if (holder.children.length && !window.Home?.sleeping && !(window.ThirdPerson && ThirdPerson.on)) { renderer.autoClear = false; renderer.clearDepth(); renderer.render(handScene, handCam); renderer.autoClear = true; }
     frames++;
     if (t - fpsT > 500) {
       fps = Math.round(frames * 1000 / (t - fpsT)); frames = 0; fpsT = t;
@@ -1723,12 +1982,31 @@
     const prior=window.refreshArtReview;
     window.refreshArtReview=()=>{prior?.();panel.replaceChildren();for(const id of [261,262,263,264,265,266,267]){const img=document.createElement('img');img.alt=Lang.item(id);img.title=Lang.item(id);img.src=icon(id);img.style.cssText='width:72px;height:72px;background:#17181799;border-radius:8px';panel.append(img);}};
   }
+  addEventListener('weapon-skin-change',()=>{for(const key in icons)delete icons[key];heldId=-1;renderBar();if(bagOpen)renderBag();window.Avatar?.refresh();window.Net?.look();schedule();});
+  if(!window.Net?.guest)for(const resident of save.castleResidents||[]){
+    const type=TYPES.find(t=>t.name===resident.type);if(!type)continue;
+    const before=mobs.length;spawnMob(type,{x:Math.floor(resident.x),z:Math.floor(resident.z)});
+    if(mobs.length>before){const m=mobs[mobs.length-1];m.x=resident.x;m.y=resident.y;m.z=resident.z;m.hp=resident.hp??type.hp;m.castleResident=true;m.t=0;}
+  }
+  freeSpawn();
   setView(R); setHQ(hq); applyPack(); renderHP(); resize();
-  window.game = { lookDir: () => lookDir(), eye: EYE, get naturalItems(){return pack==='natural';}, debug: { frame, spawnFoe, spawnMob, spawnAt, spawnDrifter, FOES, WOLF }, mobState, mobSync, mobHit, takeLoot, slow() { slowMe(); }, push(x, z) { pushMe(x, z); }, get low() { return hp < MAXHP / 2; }, get cloak() { return equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; }, get playing() { return playing; }, torches: placedTorches, get dead() { return dead; }, get swinging() { return swing > 0; }, get swingPhase() { return swing > 0 ? 1 - swing / 0.3 : 0; }, get air() { return !onGround; }, itemMesh(id) { // 给联机小人和形象预览用：手里拿的东西
+  if(materialPreview&&new URLSearchParams(location.search).has('castle')){
+    const button=document.createElement('button');button.textContent='保存城堡为新世界';button.style='position:fixed;bottom:95px;left:16px;z-index:25;background:#493b2b;border:1px solid #a68b57;color:#f0e4d0;padding:10px 16px;border-radius:8px';
+    button.onclick=()=>{try{const id=saveLibrary.create('云岚城堡');saveLibrary.save(id,{edits:world.edits,pos:[p.x,p.y,p.z,yaw,pitch],pack:'natural',view:6,time,inv,slots,hp:MAXHP,furnaces:furnaceState,railgunLoads,railgunStores,transitState,castleResidents:castleResidentState(),castleGuards:guardState,home:window.Home?.state});location.href='/?save='+id;}catch(e){button.textContent='保存失败，请检查存储空间';}};document.body.append(button);
+  }
+  if(materialPreview&&new URLSearchParams(location.search).has('architectureReview')){
+   const site=save.exploration.sites[Math.min(4,+new URLSearchParams(location.search).get('discoveryReview')||0)],panel=document.createElement('div');panel.style='position:fixed;left:12px;top:38px;padding:10px;background:#30271fdf;color:#f0e4d0;z-index:20;border-radius:6px';
+   const title=document.createElement('div');title.textContent=site.name;const reset=document.createElement('button');reset.textContent='重置建筑预览视角';reset.onclick=()=>{p.x=site.x+29.5;p.y=48;p.z=site.z+32.5;yaw=.73;pitch=-.35;};
+   const status=document.createElement('div');status.id='castleReviewStatus';panel.append(title,reset,status);document.body.append(panel);
+  }
+  window.game = { inventoryCategory,setInventoryFilter(key){inventoryFilter=key;renderBag();},railgunPlace,railgunRotate, herbState, isPreview:materialPreview, exploration:exploration||save.exploration, homeState:save.home,freeSpawn,castleWorld:!!save.castleResidents,guardState,furnaces:furnaceState,railgunLoads,railgunStores,transitState,furnaceModal,saveNow, lookDir: () => lookDir(), eye: EYE, get naturalItems(){return pack==='natural';}, debug: { frame, spawnFoe, spawnMob, spawnAt, spawnDrifter, FOES, WOLF }, mobState, mobSync, mobHit, takeLoot, slow() { slowMe(); }, push(x, z) { pushMe(x, z); }, get low() { return hp < MAXHP / 2; }, get cloak() { return equip.includes(150) ? 2 : equip.includes(47) ? 1 : 0; }, get playing() { return playing; }, torches: placedTorches, get dead() { return dead; }, get swinging() { return swing > 0; }, get swingPhase() { return swing > 0 ? 1 - swing / 0.3 : 0; }, get air() { return !onGround; }, itemMesh(id,weaponSkin) { // 给联机小人和形象预览用：手里拿的东西
       if (!id || (!isBlock(id) && !TOOLS[id])) return null;
-      if (!isBlock(id)) return ItemArt.create(id,TOOLS[id],pack==='natural');
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ map: new THREE.TextureLoader().load(icon(id)) })); m.position.y = 0.3; return m; }, get held() { return selectedItem(); }, setBlock, give, renderBar, renderBag, icon, // debug：页面不渲染时也能手动驱动一帧、指定刷怪，供测试用
-    eatFood, get satiety(){return hunger.value;},
-    heal(n) { hp = Math.min(MAXHP, hp + n); renderHP(); }, get time() { return time; }, set time(v) { time = v; schedule(); }, get yaw() { return yaw; },
+      if(window.Automation&&AutomationCore.isDevice(id)){const m=Automation.model(id);m.scale.setScalar(.42);m.position.y=.14;return m;}
+      if(window.Transit&&[600,610,611,612].includes(id)){const m=Transit.model(id);m.scale.setScalar(.42);m.position.y=.14;return m;}
+      if (!isBlock(id)) return ItemArt.create(id,TOOLS[id],pack==='natural',weaponSkin);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshLambertMaterial({ map: new THREE.TextureLoader().load(icon(id)) })); m.position.y = 0.3; return m; }, get held() { return selectedItem(); }, get back() { return onBack(); }, skinFor, setItemSkin(id, skin) { if (!WeaponSkins?.list.some(s => s.id === skin) || skin === 'default' || skinFor(id) === skin) return; itemSkin[id] = skin; delete icons[id]; if (selectedItem() === id) heldId = -1; renderBar(); if (bagOpen) renderBag(); saveSoon(); }, get sheathAt() { return sheathAt; }, setBlock, setBlocks, strikeMob(m, d, dx, dz) { const loot = strike(m, d, dx, dz); if (loot) takeLoot(loot, m.type.sad, { x: m.x, y: m.y, z: m.z }); }, give, renderBar, renderBag, icon, // debug：页面不渲染时也能手动驱动一帧、指定刷怪，供测试用
+    cityEffects, cityRecipes:RECIPES, eatFood, get satiety(){return hunger.value;},
+    heal(n) { hp = Math.min(MAXHP, hp + n); renderHP(); }, get time() { return time; }, set time(v) { time = v; schedule(); }, get yaw() { return yaw; }, get pitch() { return pitch; },
+    scoop(fill, at) { scoop = SCOOP; scoopFill = !!fill; if (at) miningFX.emit({ x: at[0], y: at[1], z: at[2], n: [0, 1, 0] }, WATER, 8, false); }, // farm.js 的桶：装水 / 倒水时手上做个动作，水面溅起水花
     world, lighting, p, meshes, renderer, scene, get dayK() { return dayK; }, setHQ, mobs, inv, slots, equip, hurt, get hp() { return hp; }, look(y, x) { yaw = y; pitch = x; }, setTime(f) { time = f * DAY; schedule(); }, get fps() { return fps; } }; // 调试用
 })();

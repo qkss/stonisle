@@ -41,6 +41,24 @@
     span(b.shaft, pull, mid, pull + ARROW, mid); b.head.position.set(pull + ARROW + 0.04, mid, 0);
   }
   const UP = new THREE.Vector3(0, 0, 1);
+  // 猎枪的枪口火光和落点火花：一团很快变淡的亮光，加几颗迸出去的小火星（dir：火星往哪边飞，不给就四面散开）
+  function flash(at, color, size, life, n, dir, parent = game.scene) {
+    const g = new THREE.Group(); g.position.copy(at); parent.add(g);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(size, 8, 6), new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); g.add(glow);
+    const bits = Array.from({ length: n }, () => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.03), new THREE.MeshBasicMaterial({ color: 0xffe28a, transparent: true, depthWrite: false }));
+      const v = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.8, Math.random() - 0.5).normalize(); if (dir) v.multiplyScalar(0.5).add(dir);
+      b.userData.v = v.multiplyScalar(2 + Math.random() * 3); g.add(b); return b;
+    });
+    const t0 = performance.now();
+    (function step() {
+      const k = (performance.now() - t0) / 1000 / life;
+      if (k >= 1) { parent.remove(g); g.traverse(o => { if (o.geometry) { o.geometry.dispose(); o.material.dispose(); } }); return; }
+      glow.scale.setScalar(1 + k); glow.material.opacity = 1 - k;
+      for (const b of bits) { b.position.addScaledVector(b.userData.v, 1 / 60); b.material.opacity = 1 - k; }
+      requestAnimationFrame(step);
+    })();
+  }
   function tracer(o, d, len, id, drop, start) { // start：第一人称时 game.js 按手里那件武器的枪口算出来的起点
     // 从弓或枪口的位置飞到准星指着的那个点；drop：射程内没打中东西，飞到射程尽头后往下掉
     const w = WEAPONS[id], arrow = w.ammo === 264, dir = new THREE.Vector3(d[0], d[1], d[2]);
@@ -54,12 +72,14 @@
     m.quaternion.setFromUnitVectors(UP, fly);
     const t0 = performance.now(), dur = Math.max(0.06, dist / w.speed) * 1000;
     game.scene.add(m);
+    const gun = id === 263, mount = start && heldMount && heldMount.parent ? heldMount : null; // 第一人称：火光挂在手里那把枪的枪口上（手是另一个场景画的，换算到世界里会偏）
+    if (gun) flash(mount ? new THREE.Vector3(...w.muzzle) : from, 0xffa030, mount ? 0.06 : 0.05, 0.09, mount ? 0 : 5, mount ? null : fly, mount || game.scene); // 猎枪：枪口一小团火
     const done = () => { game.scene.remove(m); m.geometry.dispose(); m.material.dispose(); };
     (function step() {
       const k = Math.min(1, (performance.now() - t0) / dur);
       m.position.copy(from).addScaledVector(path, k);
       if (k < 1 && game.playing) return requestAnimationFrame(step);
-      if (!drop || !game.playing) return done();
+      if (!drop || !game.playing) { if (gun && game.playing) flash(to, 0xfff0a0, 0.05, 0.3, 10); return done(); } // 打中的地方迸出火花
       // 射程内什么都没打中：从这里开始往下掉，按抛物线飞到地上（掉下去的这一段不算伤害）
       const v = fly.clone().multiplyScalar(Math.min(w.speed, 38)), // 过了射程就没劲了：再快的弹丸也只按这个速度往前飘，三四十格内落地
          pos = to.clone(); let last = performance.now(), life = 0;
@@ -67,7 +87,7 @@
         const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; life += dt;
         const t = arc(pos, v, dt); pos.set(t[0], t[1], t[2]); m.position.copy(pos); m.quaternion.setFromUnitVectors(UP, fly.copy(v).normalize());
         const b = game.world.get(Math.floor(pos.x), Math.floor(pos.y), Math.floor(pos.z));
-        if (life > 4 || pos.y < 0 || (b && !Core.PASS.has(b)) || !game.playing) return done(); // 落到方块或水里，或者飞了 4 秒
+        if (life > 4 || pos.y < 0 || (b && !Core.PASS.has(b)) || !game.playing) { if (gun && b && game.playing) flash(pos, 0xfff0a0, 0.05, 0.3, 10); return done(); } // 落地的地方也迸火花 // 落到方块或水里，或者飞了 4 秒
         requestAnimationFrame(fall);
       })();
     })();
@@ -76,8 +96,9 @@
   // 一个方块拳头加一截前臂，前臂从拳头伸向画面左下角外面；颜色跟着角色的肤色和袖子。game.js 每帧调用，id 传 0 就收起来。
   const SPOT = { 261: k => [0, 0, -0.17 - pulled(k)], 262: () => [0, 0.04, 0.3], 263: () => [0, 0.12, 0.38] }; // 在 mount() 那个组里的位置（原点握把，+z 朝前）
   let off = null;
+  let heldMount = null; // 第一人称手里那把远程武器（mount() 的组），枪口火光挂在它上面
   function offhand(holder, id, cooldown) {
-    const m = holder && holder.children[1], w = WEAPONS[id];
+    const m = holder && holder.children[1], w = WEAPONS[id]; heldMount = w ? m : null;
     if (!m || !w) { if (off) off.visible = false; return; }
     if (!off) {
       off = new THREE.Group();

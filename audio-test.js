@@ -4,7 +4,7 @@
   const $ = i => document.getElementById(i), box = $('settings-audio');
   if (!box || !window.Lang) return;
   const IDLE = 'Tap a button to hear it.';
-  box.insertAdjacentHTML('beforeend', `<h2>Sound check</h2><p class="settingsHint" id="soundNote" role="status">${IDLE}</p><button id="tryNarrator">Narrator</button> <button id="tryWick">Wick</button> <button id="tryCombat">Combat sounds</button>`);
+  box.insertAdjacentHTML('beforeend', `<h2>Sound check</h2><p class="settingsHint" id="soundNote" role="status">${IDLE}</p><button id="tryNarrator">Items (Wick)</button> <button id="tryWick">Wick</button> <button id="tryCombat">Combat sounds</button>`);
   const note = t => { $('soundNote').textContent = t; };
   const speech = (text, pitch) => () => {
     if (!$('voice').checked) return note('Turn on “Read aloud” first.');

@@ -20,6 +20,8 @@
     77:['leaf',.15],78:['leaf',.15],79:['leaf',.15],87:['leaf',.15],88:['leaf',.15],99:['leaf',.15],89:['wood',.6],98:['soil',.9], // 新花、幼苗、竹子、耕地
     68:['leaf',.15],69:['leaf',.15],70:['leaf',.15],71:['leaf',.3],72:['leaf',.3],73:['leaf',.15],
     50:['sand',.8],51:['rock',3.2],52:['rock',4.8],53:['leaf',.6],54:['sand',.7],55:['rock',4],56:['rock',9],57:['rock',9],58:['rock',9],59:['wood',1],
+    280:['sand',.8],281:['sand',.8],282:['sand',.8],283:['sand',.8],284:['sand',.8],285:['sand',.8],286:['sand',.8], // 无框彩色玻璃
+    287:['sand',.5],288:['leaf',.3],289:['rock',4.8], // 岩浆（准星穿过它，挖不到）、炸药（引线点着时一下就能拿回来）、熔炉
   };
   for(const id of [...Array.from({length:16},(_,i)=>160+i),180,181,182,...Array.from({length:15},(_,i)=>184+i),...Array.from({length:56},(_,i)=>200+i)])blocks[id]=['wood',id<184?2.4:1.5];
   // Unknown items, blocks, food and torches dig like bare hands.

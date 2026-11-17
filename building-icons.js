@@ -3,7 +3,8 @@
   let renderer;const materials=new WeakMap(),plantMaterials=new WeakMap();
   function create(id,texture){
     let mat=materials.get(texture);if(!mat){mat=new THREE.MeshLambertMaterial({map:texture,alphaTest:.5,side:THREE.DoubleSide});materials.set(texture,mat);}
-    const g=new THREE.Group(),tiles=Core.BLOCKS[id].tiles;
+    const g=new THREE.Group(),tiles=Core.BLOCKS[id].tiles,tint=Core.GLASS_TINT&&Core.GLASS_TINT[id];
+    if(tint){mat=new THREE.MeshLambertMaterial({map:texture,color:new THREE.Color(...tint),transparent:true,opacity:.7});mat.userData.iconOwned=true;} // 无框彩色玻璃：贴图是近白的，图标按颜色染、半透明
     const box=(w,h,d,x,y,z,ts=tiles)=>{
       if(typeof ts==='number')ts=[ts,ts,ts];const geo=new THREE.BoxGeometry(w,h,d),uv=geo.attributes.uv;
       for(let f=0;f<6;f++)for(let v=0;v<4;v++){const i=f*4+v,t=ts[f===2?0:f===3?2:1];uv.setX(i,(t+.008+uv.getX(i)*.984)/Core.ATLAS_TILES);}
@@ -17,6 +18,7 @@
       let plant=plantMaterials.get(texture);if(!plant){plant=mat.clone();plant.vertexColors=true;plantMaterials.set(texture,plant);}
       const m=new THREE.Mesh(geo,plant);m.position.y=y;g.add(m);return m;
     };
+    if(QuantumRailgunCore.isBlock(id)){for(const q of QuantumRailgunCore.wholeParts(id)){const m=box(q[3]-q[0],q[4]-q[1],q[5]-q[2],(q[0]+q[3])/2-.5,(q[1]+q[4])/2,(q[2]+q[5])/2-.5,q[6]);if(q[7]!==undefined){m.material=mat.clone();m.material.color.set(q[7]);m.material.userData.iconOwned=true;}}return g;}
     if(id===158){
       const data=Core.cobbleModel(),geo=new THREE.BufferGeometry();
       for(const [name,key,size] of [['position','pos',3],['normal','nor',3],['uv','uv',2],['color','col',3]])geo.setAttribute(name,new THREE.Float32BufferAttribute(data[key],size));
@@ -24,8 +26,13 @@
       let stone=plantMaterials.get(texture);if(!stone){stone=mat.clone();stone.vertexColors=true;plantMaterials.set(texture,stone);}
       g.add(new THREE.Mesh(geo,stone));return g;
     }
+    if(id===144){
+      const m=new THREE.MeshLambertMaterial({map:CherryMaterial.texture(),alphaTest:.45,side:THREE.DoubleSide});m.userData.iconOwned=true;
+      for(let i=0;i<4;i++){const card=new THREE.Mesh(new THREE.PlaneGeometry(.95,.9),m);card.rotation.y=i*Math.PI/3;card.position.y=.5;g.add(card);}return g;
+    }
     const P=Core.PLANTS[id];
     if(P||id>=68&&id<=73){
+      if(P?.full){const q=P.quadrant;card(P.tile,q?q[0]*.5+.008:.008,q?q[0]*.5+.492:.992,q?(q[1]?.008:.508):.008,q?(q[1]?.492:.992):.992,.72,P.top,P.top/2);return g;}
       if(P){if(P.stem)card(29,.01,.99,.01,.49,.48,P.stem,P.stem/2);card(P.tile,P.qx*.5+.008,P.qx*.5+.492,P.qy?.008:.508,P.qy?.492:.992,.68,P.top-P.stem,(P.top+P.stem)/2);}
       else if(id<=70){card(29,.01,.99,.01,.49,.5,.4,.2);card(29,.01,.99,.51,.99,.5,.4,.6,[0xd76f6a,0xe0c35e,0x859ccd][id-68]);}
       else card(tiles[1],.01,.99,.01,.99,.8,.9,.45);
@@ -41,9 +48,9 @@
       box(.10,.60,.10,0,.3,0,9);box(.9,.48,.10,0,.8,0,46);
       for(const [w,x,y] of [[.52,-.08,.88],[.38,-.15,.76]])box(w,.025,.012,x,y,.056,6);
     }else if(id===66||id===67){
-      box(.85,.18,1.6,0,.35,0,9);box(.82,.15,1.10,0,.49,.24,28);box(.78,.17,.38,0,.50,-.53,16);
-      for(const x of [-.32,.32])for(const z of [-.66,.66])box(.12,.28,.12,x,.14,z,9);
-      box(.9,.48,.08,0,.5,-.79,9);
+      for(let half=0;half<2;half++)for(const q of Core.bedParts(half===1,true)){
+        box(q[3]-q[0],q[4]-q[1],q[5]-q[2],(q[0]+q[3])/2-.5,(q[1]+q[4])/2,(q[2]+q[5])/2+half-1,q[6]);
+      }
     }else if(Core.isChest(id)){
       box(.9,.58,.76,0,.34,0);box(.94,.22,.80,0,.74,0);box(.11,.19,.07,0,.57,.41,24);
     }else{

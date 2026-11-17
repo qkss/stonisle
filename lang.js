@@ -12,8 +12,11 @@ window.Lang = (() => {
   ['door', 'door', 'door', 'door', 'window', 'window', 'bed', 'bed', 'red flower', 'yellow flower', 'blue flower', 'berry bush', 'berry bush', 'sapling'].forEach((n, i) => { BLOCK[60 + i] = n; }); // 家居与植物
   Object.assign(BLOCK, { 159: 'banana leaves', 176: 'grape vine', 199: 'lychee leaves', 183: 'slime block', 116: 'red mushroom', 117: 'brown mushroom', 118: 'white mushroom', 179: 'campfire', 119: 'pumpkin', 143: 'watermelon', 144: 'cherry blossom', 145: 'apple leaves', 152: 'mango leaves', 154: 'granite', 155: 'marble', 156: 'quartz', 157: 'slate', 158: 'cobblestone', 77: 'rose', 78: 'sunflower', 79: 'lily', 87: 'daffodil', 88: 'rapeseed flower', 89: 'bamboo', 98: 'farmland', 99: 'little plant' }); // 新植物和耕地（farm.js）
   BLOCK[74] = BLOCK[75] = 'sign'; BLOCK[76] = 'chest'; BLOCK[96] = 'glow glass'; BLOCK[97] = 'ice lamp';
+  ['clear glass', 'tea glass', 'sky glass', 'pink glass', 'mint glass', 'amber glass', 'violet glass', 'lava', 'TNT', 'furnace'].forEach((n, i) => { BLOCK[280 + i] = n; });
   Core.WOODS.forEach(w=>{for(let k=0;k<4;k++)BLOCK[w.ladder+k]=w.name+' ladder';BLOCK[w.log]=w.name+' log';BLOCK[w.plank]=w.name+' plank';BLOCK[w.chest]=w.name+' chest';BLOCK[w.doorR]=BLOCK[w.doorR+1]=w.name+' door';for(let k=0;k<4;k++){BLOCK[w.door+k]=w.name+' door';BLOCK[w.stairs+k]=w.name+' stairs';}BLOCK[w.slab]=w.name+' slab';BLOCK[w.fence]=w.name+' fence';for(let k=0;k<4;k++)BLOCK[w.inverted+k]=w.name+' stairs';BLOCK[w.upperSlab]=w.name+' slab';BLOCK[w.doubleSlab]=w.name+' double slab';});
-  const ITEM = { 273: 'cooked meat', 274: 'cooked rabbit', 275: 'cooked venison', 276: 'cooked antelope', 277: 'cooked fox', 278: 'cooked pork', 279: 'cooked fish', 268: 'rabbit meat', 269: 'venison', 270: 'antelope meat', 271: 'fox meat', 272: 'pork', 261: 'bow', 262: 'crossbow', 263: 'hunting shotgun', 264: 'arrow', 265: 'pellet', 266: 'bowstring', 267: 'gunpowder', 256: 'banana', 257: 'grapes', 258: 'lychee', 259: 'pumpkin seeds', 260: 'watermelon seeds', 177: 'apple', 178: 'mango', 100: 'rose seeds', 101: 'sunflower seeds', 102: 'lily seeds', 103: 'daffodil seeds', 104: 'rapeseed seeds', 105: 'fertilizer', 106: 'wooden bucket', 107: 'wooden bucket of water', 108: 'iron bucket', 109: 'iron bucket of water', 16: 'wooden pickaxe', 17: 'wooden axe', 18: 'wooden shovel', 153: 'wooden sword', 20: 'stone pickaxe', 21: 'stone axe', 22: 'stone shovel', 23: 'stone sword', 24: 'torch', 25: 'iron pickaxe', 26: 'iron sword',
+  for(let i=0;i<6;i++)BLOCK[600+i]='quantum relay';BLOCK[610]='rail';BLOCK[611]='cargo carriage';BLOCK[612]='engine';BLOCK[620]='executor';BLOCK[621]='trigger';BLOCK[622]='detector';
+  QuantumRailgunCore.tiers.forEach((t,index)=>{for(let d=0;d<6;d++)BLOCK[QuantumRailgunCore.secondaryId(t.base+d)]=BLOCK[t.base+d]=['basic','intermediate','advanced','super'][index]+' quantum railgun';});
+  const ITEM = {466:'magma crystal core',313:'moon blossom',314:'goldthread ginseng',315:'jadeheart herb',320:'lingzhi spores',321:'frost lotus seeds',322:'violet dew seeds',323:'moon blossom seeds',324:'goldthread seeds',325:'jadeheart seeds',310:'crimson lingzhi',311:'frost lotus',312:'violet dew herb',304:'healing pill',305:'restoration pill',306:'satiety pill',307:'swiftwind wine',308:'stoneguard wine',309:'delver wine',300:'color-shifting ink',301:'refined mica flakes',302:'iron oxide pigment',303:'refined resin',297:'gold coin',298:'coin press blueprint',299:'coin press', 294:'jetpack blueprint',295:'generator blueprint',296:'carriage blueprint',293: 'shotgun blueprint', 290: 'grenade', 291: 'iron ingot', 292: 'gold ingot', 273: 'cooked meat', 274: 'cooked rabbit', 275: 'cooked venison', 276: 'cooked antelope', 277: 'cooked fox', 278: 'cooked pork', 279: 'cooked fish', 268: 'rabbit meat', 269: 'venison', 270: 'antelope meat', 271: 'fox meat', 272: 'pork', 261: 'bow', 262: 'crossbow', 263: 'hunting shotgun', 264: 'arrow', 265: 'pellet', 266: 'bowstring', 267: 'gunpowder', 256: 'banana', 257: 'grapes', 258: 'lychee', 259: 'pumpkin seeds', 260: 'watermelon seeds', 177: 'apple', 178: 'mango', 100: 'rose seeds', 101: 'sunflower seeds', 102: 'lily seeds', 103: 'daffodil seeds', 104: 'rapeseed seeds', 105: 'fertilizer', 106: 'wooden bucket', 107: 'wooden bucket of water', 108: 'iron bucket', 109: 'iron bucket of water', 16: 'wooden pickaxe', 17: 'wooden axe', 18: 'wooden shovel', 153: 'wooden sword', 20: 'stone pickaxe', 21: 'stone axe', 22: 'stone shovel', 23: 'stone sword', 24: 'torch', 25: 'iron pickaxe', 26: 'iron sword',
     27: 'spear', 30: 'raw meat', 31: 'hide', 32: 'berry', 33: 'clay', 34: 'scorpion shell', 35: 'vine', 36: 'tusk', 37: 'shade fur', 46: 'shell boots', 47: 'night cloak',
     38: 'bat wing', 39: 'black feather', 48: 'glide cape', 49: 'quill', 110: 'glow dust', 111: 'frost shard', 112: 'raw fish', 113: 'jelly', 114: 'crab shell', 115: 'crab meat', 120: 'crab helmet', 121: 'straw hat', 122: 'straw shirt', 123: 'straw pants', 124: 'straw sandals', 125: 'leather pants', 126: 'iron pants',
     127: 'alloy helmet', 128: 'alloy armor', 129: 'alloy pants', 131: 'alloy boots', 130: 'alloy ingot',
@@ -23,7 +26,23 @@ window.Lang = (() => {
     '洞蝠': 'cave bat', '啄鸦': 'peck crow', '灯蛾': 'lamp moth', '霜灵': 'frost wisp', '咬咬鱼': 'nipper fish', '刺水母': 'sting jelly', '钳蟹': 'pincer crab',
     '雪爪': 'frost prowler', '沙虫': 'dune worm', '岩偶': 'stone golem', '黑曜卫士': 'obsidian sentinel', '潜鳗': 'lurker eel', '潮蛇': 'tide serpent', '沙鹫': 'dune vulture', '风隼': 'gale hawk', '影翼': 'shade wing', '风暴鹏': 'storm roc',
     '泥团': 'mud blob', '沙蝎': 'sand scorpion', '缠藤': 'snare vine', '鬃猪': 'bristle boar' };
+  for(const d of CerealCrops.list){ITEM[d.product]=d.en;ITEM[d.seed]=d.en+' seeds';ITEM[d.id]=d.en+' crop';ITEM[d.young]=d.en+' seedling';ITEM[d.growing]=d.en+' growing crop';}
+  for(const d of HerbVarieties.list)ITEM[d.id]=d.en;ITEM[360]='snow lotus seeds';ITEM[361]='ginseng seeds';
+  for(const [id,s] of Object.entries(CityCrafts.items))ITEM[id]=s.en;
   const item = id => BLOCK[id] || ITEM[id] || 'thing';
+  const chineseByName = new Map();
+  function setChinese(extra={}) {
+    const names={...extra};
+    for(const [id,b] of Object.entries(Core.BLOCKS))if(b?.name)names[id]=b.name;
+    Object.assign(names,{32:'浆果',107:'木桶装水',109:'铁桶装水',112:'生鱼',115:'蟹肉',256:'香蕉',257:'葡萄',258:'荔枝',259:'南瓜种子',260:'西瓜种子',177:'苹果',178:'芒果',100:'玫瑰种子',101:'向日葵种子',102:'百合种子',103:'水仙种子',104:'油菜花种子',105:'肥料',268:'兔肉',269:'鹿肉',270:'羚羊肉',271:'狐狸肉',272:'猪肉',273:'熟肉',274:'熟兔肉',275:'熟鹿肉',276:'熟羚羊肉',277:'熟狐狸肉',278:'熟猪肉',279:'熟鱼'});
+    for(const [id,zh] of Object.entries(names))chineseByName.set(item(+id),zh);
+    chineseByName.set('hand','空手');chineseByName.set('log','木头');chineseByName.set('plank','木板');
+  }
+  const chinese=value=>chineseByName.get(typeof value==='number'?item(value):value);
+  function display(value) {
+    const en=typeof value==='number'?item(value):value,zh=chineseByName.get(en);
+    return zh?en+'（'+zh+'）':en;
+  }
   // 词 → 例句。这张表就是目前的受控词表：只有表里的词会进手记
   const SENT = {
     grass: 'Grass is green.', dirt: 'Dirt is brown.', stone: 'Stone is hard.', sand: 'Sand is soft.', water: 'Fish live in water.',
@@ -90,10 +109,10 @@ window.Lang = (() => {
     voice = vs.find(v => good.test(v.name) && /en[-_]US/i.test(v.lang)) || vs.find(v => good.test(v.name))
       || vs.find(v => v.localService && /en[-_]US/i.test(v.lang)) || vs[0] || null;
     if ($('voiceNote')) $('voiceNote').textContent = voice ? '' : '(no English voice on this device)';
-    // Wick 用另一个声音，和旁白区分开：优先选孩子气的（macOS 的 Junior、Windows 的 Ana 等），可在菜单里换
+    // 缺少录音时优先自然、柔和的声线，避免默认使用搞怪变声。用户已选的声线保留。
     enVoices = vs;
     const saved = localStorage.getItem('stonisle.wickVoice'), US = v => /en[-_]US/i.test(v.lang);
-    const kid = ['Junior', 'Ana', 'Princess', 'Sandy', 'Shelley', 'Flo', 'Kathy', 'Nicky']    // 按这个顺序挑，越靠前越孩子气
+    const kid = ['Ana', 'Samantha', 'Nicky', 'Shelley', 'Flo', 'Sandy']    // 柔和的系统回退声线
       .map(n => vs.find(v => v !== voice && US(v) && new RegExp('^(Microsoft )?' + n + '\\b', 'i').test(v.name))).find(Boolean);
     wickVoice = vs.find(v => v.name === saved) || kid || vs.find(v => v !== voice && v.localService && US(v)) || voice;
     fillWickVoices();
@@ -104,19 +123,20 @@ window.Lang = (() => {
   }
   if (TTS) { pickVoice(); speechSynthesis.addEventListener('voiceschanged', pickVoice); }
   // 新的朗读替换正在读的。返回的 Promise 在读完（没有语音时按字数估算）后兑现，开场用它串起一句句话
-  function say(text, slow, pitch = 1) {
+  function say(text, slow, pitch = 1, systemOnly = false) {
     if (!text) return Promise.resolve();
     if (pitch === 1 && !isItemText(text)) pitch = 1.4;       // 旁白只读界面上的物品名和它的例句；其余一律由 Wick 说
     last = text; lastAt = performance.now(); lastPitch = pitch;
     const est = 700 + text.length * (slow ? 120 : 75);
     const el = pitch !== 1 ? bubEl : capEl;                  // pitch ≠ 1：Wick 说的话，进气泡；否则是旁白读物品名，显示在左下角
-    const who = pitch !== 1 ? 'wick' : 'narrator';           // 两个声音：Wick 负责对话和任务；旁白负责界面上的物品名、单词和例句
-    const clip = on && window.VOICES && VOICES[who] && VOICES[who][text];
+    const who = pitch !== 1 ? 'wick' : 'narrator'; // Two caption channels, both voiced by Wick.
+    const clip = !systemOnly && on && window.VOICES && VOICES[who] && VOICES[who][text];
     if (clip) return playClip(clip, text, slow, el, pitch);   // 预先生成的配音文件优先
     if (!on || !voice) { caption(text, null, slow, el); return new Promise(r => setTimeout(r, est)); } // 不出声时也显示字幕
+    if(audio)audio.pause();clearInterval(hiTimer);
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text), wk = pitch !== 1 && wickVoice;     // 没有配音文件的句子退回系统语音合成，同样分两个声音
-    u.voice = wk || voice; u.lang = u.voice.lang; u.rate = slow ? 0.6 : wk ? 1 : 0.9; u.pitch = pitch;
+    const u = new SpeechSynthesisUtterance(text), wk = wickVoice;     // 没有配音文件的句子退回系统语音合成，同样分两个声音
+    u.voice = wk || voice; u.lang = u.voice.lang; u.rate = slow ? 0.65 : wk ? 0.94 : 0.9; u.pitch = wk ? (pitch >= 1.7 ? 1.25 : 1.15) : 1; u.volume = wk ? 0.85 : 1;
     caption(text, u, slow, el);
     speechSynthesis.speak(u);
     return new Promise(r => { u.addEventListener('end', r); u.addEventListener('error', r); setTimeout(r, est + 5000); });
@@ -144,8 +164,9 @@ window.Lang = (() => {
       setTimeout(res, ((dur || 3) / a.playbackRate + 6) * 1000);
     });
   }
-  const isItemText = t => !!SENT[t] || t === 'hand' || t === 'thing' || t === 'animal' || !!SENT[t.split('. ')[0]];
-  const wsay = (text, excited) => say(text, false, excited ? 1.7 : 1.4); // Wick：换一个声音、音调更高、语速略快；兴奋时更高
+  const ITEM_WORDS=new Set([...Object.values(BLOCK),...Object.values(ITEM)].filter(Boolean));
+  const isItemText = t => ITEM_WORDS.has(t) || !!SENT[t] || t === 'hand' || t === 'thing' || t === 'animal' || !!SENT[t.split('. ')[0]];
+  const wsay = (text, excited) => say(text, false, excited ? 1.7 : 1.4); // pitch 标记角色与兴奋程度；实际回退音高在 say 中限制，避免尖锐变声。
   // 字幕：读什么就显示什么，读到哪个词哪个词变亮。旁白显示在左下角，Wick 的话显示在它头顶的气泡里
   function caption(text, u, slow, el) {
     const other = el === capEl ? bubEl : capEl;
@@ -177,7 +198,32 @@ window.Lang = (() => {
 
   // ---- 看见即标注：准星停在同一样东西上 0.5 秒显示英文名；第一次见到的词自动读一遍 ----
   let seen; try { seen = new Set(JSON.parse(localStorage.getItem('stonisle.words')) || []); } catch (e) { seen = new Set(); }
-  let cur = '', since = 0;
+  let cur = '', curTarget = '', since = 0, labelShownAt = -1;
+  const labelShards=new Set();let labelEntrance=null;
+  function hideLookLabel(el){
+    if(!el?.textContent)return;
+    labelEntrance?.cancel();labelEntrance=null;
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+      const r=el.getBoundingClientRect();
+      // Six clipped copies preserve the actual lettering and background while separating.
+      const polygons=['0 0,34% 0,30% 55%,0 48%','34% 0,69% 0,73% 48%,30% 55%','69% 0,100% 0,100% 53%,73% 48%','0 48%,30% 55%,36% 100%,0 100%','30% 55%,73% 48%,66% 100%,36% 100%','73% 48%,100% 53%,100% 100%,66% 100%'];
+      for(const shard of labelShards){shard.remove();}labelShards.clear();
+      for(let i=0;i<6;i++){
+        const shard=el.cloneNode(true);shard.removeAttribute('id');shard.removeAttribute('data-name');shard.className='label-fragment';shard.setAttribute('aria-hidden','true');
+        Object.assign(shard.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',boxSizing:'border-box',transform:'none',clipPath:'polygon('+polygons[i]+')'});
+        document.body.append(shard);labelShards.add(shard);
+        const x=(i%3-1)*10,y=(i<3?-1:1)*(5+i%3*2),rotate=(i%2?1:-1)*(2+i%3);
+        const animation=shard.animate([{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:`translate(${x}px,${y}px) rotate(${rotate}deg)`,opacity:0}],{duration:360+i%3*25,easing:'cubic-bezier(.2,.6,.3,1)',fill:'forwards'});
+        animation.onfinish=()=>{shard.remove();labelShards.delete(shard);};
+      }
+    }
+    el.textContent='';
+  }
+  function revealLookLabel(el,text){
+    el.textContent=text;labelEntrance?.cancel();
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches)labelEntrance=el.animate([{opacity:0,transform:'translate(-50%,4px)'},{opacity:1,transform:'translate(-50%,0)'}],{duration:170,easing:'ease-out'});
+  }
+
   function meet(name) { // 只收录词表里的词；新词返回 true
     if (!SENT[name] || seen.has(name)) return false;
     seen.add(name);
@@ -195,14 +241,21 @@ window.Lang = (() => {
     }
     return name;
   }
-  function look(blockName, now, o, d, mobs, blockT) {
+  function look(blockName, now, o, d, mobs, blockT, blockKey = blockName) {
     if (window.game && o) wickTick(now, o, d);
-    const name = (mobs && mobAt(o, d, mobs, blockT)) || blockName, el = $('label');
-    if (name !== cur) { cur = name; since = now; if (el) el.textContent = ''; return; }
-    if (!name || !el || el.textContent || now - since < 500) return;
-    el.textContent = name;
+    const mobName = mobs && mobAt(o, d, mobs, blockT);
+    const name = mobName || blockName, target = mobName ? 'mob:'+mobName : blockKey, el = $('label');
+    if (name !== cur || target !== curTarget) { cur = name; curTarget = target; since = now; labelShownAt = -1; if (el) { hideLookLabel(el);el.dataset.name=''; } return; }
+    if (!name || !el) return;
+    if (labelShownAt >= 0) {
+      if (now - labelShownAt >= 2000) hideLookLabel(el); // Keep the observed name for quest checks, but never re-show this target.
+      return;
+    }
+    if (now - since < 500) return;
+    revealLookLabel(el,display(name)); el.dataset.name=name; labelShownAt=now;
     if (meet(name)) auto(name);
   }
+
 
   // ---- 分级任务引导：句子从单词短语 → 带数字的短句 → 完整句子，逐级变难 ----
   // 完成条件只读游戏状态（背包、世界改动、位置、界面），每 0.4 秒看一次，不改 game.js 的逻辑
@@ -210,25 +263,27 @@ window.Lang = (() => {
   const held = () => (($('bar') && $('bar').querySelector('.on')) || {}).title || '';
   const placed = (g, id) => { let n = 0; for (const k in g.world.edits) for (const i in g.world.edits[k]) if (g.world.edits[k][i] === id) n++; return n; };
   const inv = (g, id) => g.inv[id] || 0;
+  // 任务里说的“树、原木、木板、石头”不分种类：砍白桦、胡桃、雪松也算，挖花岗岩、石板岩也算
+  const LOGS = Core.WOODS.map(w => w.log), STONES = [3, 154, 155, 156, 157, 158], sum = (g, ids) => ids.reduce((n, id) => n + (g.inv[id] || 0), 0);
   const PLANKS = Core.WOODS.map(w => w.plank), placedIf = (g, ok) => { let n = 0; for (const k in g.world.edits) for (const i in g.world.edits[k]) if (i !== 'g' && ok(g.world.edits[k][i])) n++; return n; }; // 世界里放着的、符合条件的方块数
   const LEVELS = [
     { name: 'First words', quests: [
-      { say: 'Look. A tree.', target: [6], done: () => /^(log|leaves)$/.test($('label').textContent) },
-      { say: 'Dig a log.', target: [6], count: g => inv(g, 6), n: 1, gain: true },
+      { say: 'Look. A tree.', target: LOGS, done: () => /(log|leaves|blossom|vine)$/.test($('label').dataset.name||$('label').textContent) },
+      { say: 'Dig a log.', target: LOGS, count: g => sum(g, LOGS), n: 1, gain: true },
       { say: 'Open the bag.', key: 'E', done: () => !$('bag').classList.contains('off') },
-      { say: 'Make planks.', count: g => inv(g, 8), n: 4, gain: true, quiet: true },
-      { say: 'Put a plank.', count: g => placed(g, 8), n: 1 },
+      { say: 'Make planks.', count: g => sum(g, PLANKS), n: 4, gain: true, quiet: true },
+      { say: 'Put a plank.', count: g => placedIf(g, id => PLANKS.includes(id)), n: 1 },
     ] },
     { name: 'Numbers', quests: [
-      { say: 'Dig three logs.', target: [6], count: g => inv(g, 6), n: 3, gain: true },
-      { say: 'Make eight planks.', count: g => inv(g, 8), n: 8, gain: true, quiet: true },
-      { say: 'Dig five stones.', target: [3], count: g => inv(g, 3), n: 5, gain: true },
+      { say: 'Dig three logs.', target: LOGS, count: g => sum(g, LOGS), n: 3, gain: true },
+      { say: 'Make eight planks.', count: g => sum(g, PLANKS), n: 8, gain: true, quiet: true },
+      { say: 'Dig five stones.', target: STONES, count: g => sum(g, STONES), n: 5, gain: true },
       { say: 'Make one stone pickaxe.', done: g => inv(g, 20) + inv(g, 25) > 0 },
-      { say: 'Put six planks on the ground.', count: g => placed(g, 8), n: 6 },
+      { say: 'Put six planks on the ground.', count: g => placedIf(g, id => PLANKS.includes(id)), n: 6 },
     ] },
     { name: 'Sentences', quests: [
       { say: 'Hold the pickaxe in your hand.', key: '1–9', done: () => /pickaxe/.test(held()) },
-      { say: 'Dig three stones with your pickaxe.', target: [3], count: g => (/pickaxe/.test(held()) ? inv(g, 3) : -1), n: 3, gain: true },
+      { say: 'Dig three stones with your pickaxe.', target: STONES, count: g => (/pickaxe/.test(held()) ? sum(g, STONES) : -1), n: 3, gain: true },
       { say: 'Go ten blocks away from here.', count: g => Math.floor(Math.hypot(g.p.x - at.x, g.p.z - at.z)), n: 10, quiet: true },
       { say: 'Look at two new things.', count: () => seen.size, n: 2 },
       { say: 'Open your journal and hear a word.', key: 'J', done: () => heard },
@@ -242,22 +297,19 @@ window.Lang = (() => {
     ] },
   ];
   const QUESTS = LEVELS.flatMap((l, li) => l.quests.map((q, qi) => ({ ...q, level: li, idx: qi, of: l.quests.length })));
-  // 中文小字提示：只给“这一句里第一次出现的新词”，标在该词正下方；F1 或点任务卡片显示 5 秒
-  const ZH = { look: '看', tree: '树', dig: '挖', log: '原木', logs: '原木', open: '打开', bag: '背包', make: '制作', plank: '木板', planks: '木板', put: '放',
-    three: '三', eight: '八', five: '五', stone: '石头', stones: '石头', one: '一', pickaxe: '镐', six: '六', ground: '地面', hold: '拿着', hand: '手',
-    with: '用', go: '走', ten: '十', blocks: '格', away: '离开', here: '这里', two: '二', new: '新的', things: '东西', journal: '手记', hear: '听', word: '单词',
-    your: '你的', on: '在…上', in: '在…里', from: '从', at: '朝', and: '和',
-    build: '建造', wall: '墙', twelve: '十二', door: '门', bed: '床', home: '家', sleep: '睡觉', night: '夜晚' }; // a、the 不标
-  const keyOf = w => w.toLowerCase().replace(/[^a-z]/g, '');
-  const known = new Set();
-  const NEWW = QUESTS.map(q => { // 每条任务里的新词（按任务顺序第一次出现）
-    const fresh = new Set();
-    for (const w of q.say.split(/\s+/)) { const k = keyOf(w); if (ZH[k] && !known.has(ZH[k])) { fresh.add(k); known.add(ZH[k]); } } // 按词义去重：log 和 logs 算同一个词
-    return fresh;
-  });
-  function glossed(i) { // 句子拆成一个个词；新词下面挂一行中文（平时隐藏）。整句都没有新词时退而标出全部能解释的词
-    const words = QUESTS[i].say.split(/\s+/), fresh = NEWW[i].size ? NEWW[i] : new Set(words.map(keyOf));
-    return words.map(w => { const k = keyOf(w); return `<span class="w">${w}${fresh.has(k) && ZH[k] ? `<em>${ZH[k]}</em>` : ''}</span>`; }).join(' ');
+  // Always-visible hints for actions and meaningful nouns; leave grammar/number words uncluttered.
+  const QUEST_GLOSS = {
+    'stone pickaxe':'石镐', look:'看', dig:'挖掘', open:'打开', make:'制作', put:'放置',
+    hold:'拿着', go:'走', hear:'听', build:'建造', sleep:'睡觉',
+    tree:'树', log:'木头', logs:'木头', bag:'背包', plank:'木板', planks:'木板',
+    stone:'石头', stones:'石头', pickaxe:'镐', ground:'地面', hand:'手',
+    journal:'手记', word:'单词', wall:'墙', door:'门', bed:'床', home:'家'
+  };
+  const questTerms=Object.keys(QUEST_GLOSS).sort((a,b)=>b.length-a.length);
+  const questPattern=new RegExp('\\b('+questTerms.join('|')+')\\b','gi');
+  function glossed(i) {
+    return QUESTS[i].say.replace(questPattern,word=>
+      `<button type="button" class="w" data-quest-word="${word.toLowerCase()}" aria-label="Read ${word}">${word}<em>（${QUEST_GLOSS[word.toLowerCase()]}）</em></button>`);
   }
   let zhTimer = 0;
   function showZh() { guideEl.classList.add('zh'); clearTimeout(zhTimer); zhTimer = setTimeout(() => guideEl.classList.remove('zh'), 5000); }
@@ -266,9 +318,11 @@ window.Lang = (() => {
   const css = document.createElement('style');
   css.textContent = `
     #guide { position: fixed; left: 50%; top: 44px; transform: translateX(-50%); padding: 8px 18px; border-radius: 14px; background: #2b2233dd; color: #fff; text-align: center; cursor: pointer; font: 14px/1.5 system-ui, sans-serif; }
-    #guide .w { display: inline-block; vertical-align: top; text-align: center; }
-    #guide em { display: none; font: 400 12px/1.3 system-ui, sans-serif; color: #ffd36b; }
-    #guide.zh em { display: block; }
+    #guide .w { display:inline-block;vertical-align:baseline;text-align:center;background:none;border:0;border-radius:3px;box-shadow:none;padding:0;margin:0;color:inherit;font:inherit;cursor:pointer; }
+    #guide .w:hover,#guide .w:focus-visible { color:#ffe1a0;text-decoration:underline;text-underline-offset:4px; }
+    #guide .w:focus-visible { outline:1px solid #dbc895;outline-offset:3px; }
+    #guide em { display: inline; font: 400 .68em/1.4 system-ui, sans-serif; color: #dbc895; }
+    #guide.zh em { color: #ffe1a0; }
     #guide:empty, #menu:not(.off) ~ #guide { display: none; } /* 菜单打开时不盖在菜单上 */
     #guide small { display: block; opacity: .8; font-size: 11px; letter-spacing: 1px; }
     #guide small s { display: inline-block; width: 9px; height: 12px; margin-right: 6px; vertical-align: -1px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; background: radial-gradient(circle at 50% 65%, #fff6c8 0 25%, #ffb340 70%); box-shadow: 0 0 6px 2px #ff9a2088; } /* Wick 的小火苗 */
@@ -290,7 +344,7 @@ window.Lang = (() => {
     #intro i { width: 26px; height: 34px; border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%; background: radial-gradient(circle at 50% 65%, #fff6c8 0 22%, #ffb340 55%, #ff7a1a00 100%); box-shadow: 0 0 60px 26px #ff9a2055; animation: flick .5s infinite alternate; }
     #intro small { position: fixed; bottom: 18px; right: 20px; color: #fff6; font: 12px system-ui, sans-serif; }
     @keyframes flick { from { transform: translate(var(--x, 0), var(--y, 0)) scale(1); } to { transform: translate(var(--x, 0), var(--y, 0)) scale(1.12, .94); } }
-    #journal { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; background: #2b2233aa; }
+    #journal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: #2b2233aa; }
     #journal.off { display: none; }
     #journal > div { width: min(680px, 92vw); max-height: 84vh; overflow-y: auto; padding: 22px 26px; border-radius: 16px; background: #fdf6ec; color: #2b2233; box-shadow: 0 12px 50px #0008; }
     #journal h2 { margin: 0 0 4px; color: #3d6b2c; } #journal h3 { margin: 16px 0 8px; font-size: 13px; letter-spacing: 1px; color: #8a6a44; }
@@ -303,7 +357,17 @@ window.Lang = (() => {
   const guideEl = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'guide' }));
   const capEl = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'caption' }));
   const bubEl = document.body.appendChild(Object.assign(document.createElement('div'), { id: 'bubble' }));
-  guideEl.addEventListener('click', () => { if (QUESTS[step]) showZh(); }); // 手机上点一下任务卡片
+  guideEl.tabIndex=0;guideEl.setAttribute('role','group');guideEl.setAttribute('aria-label','Task: click to hear Wick. Select a keyword to hear that word.');
+  guideEl.addEventListener('click', e => {
+    e.stopPropagation();if(!QUESTS[step]||busy)return;showZh();
+    const word=e.target.closest('[data-quest-word]')?.dataset.questWord;
+    wsay(word||QUESTS[step].say);
+  });
+  guideEl.addEventListener('keydown', e => {
+    if(e.code!=='Enter'&&e.code!=='Space')return;
+    e.stopPropagation();
+    if(e.target===guideEl){e.preventDefault();guideEl.click();}
+  });
   function showQuest(announce) {
     const q = QUESTS[step];
     if ($('guideBtn')) $('guideBtn').textContent = q ? 'Skip the tasks' : 'Start the tasks again';
@@ -320,7 +384,8 @@ window.Lang = (() => {
     if (q.gift && window.game) { game.give(q.gift, 1); game.renderBar(); }                          // 这一步的奖励（装好门送一张床）
     const cheer = !next ? 'You did it! Have fun.' : q.cheer || (next.level !== q.level ? `Good job! Level ${NUM[next.level + 1]}.` : 'Good job!');
     guideEl.innerHTML = `<b>${cheer}</b>`; wsay(cheer); target = null;
-    setTimeout(startQuest, next ? 2200 : 3500);
+    const cheerMs=(window.VOICES?.wick?.[cheer]?.[1]||0)*1000+450;
+    setTimeout(startQuest, Math.max(next ? 2200 : 3500,cheerMs)); // Let Wick finish before announcing the next task.
   }
   setInterval(() => { // 只在游玩中（菜单关闭）检查
     const g = window.game, q = QUESTS[step];
@@ -634,7 +699,7 @@ window.Lang = (() => {
   function renderJournal() {
     const words = Object.keys(SENT), doneLines = QUESTS.slice(0, step).map(q => q.say);
     jr.innerHTML = `<div><h2>Field Journal</h2><small>${seen.size} / ${words.length} words · ${doneLines.length} sentences · Click to hear. Press J to close.</small>
-      <p id="jline"></p>
+      <p id="jline">Click a word to hear it.</p>
       <h3>WORDS</h3><div class="words">${words.map(w => seen.has(w) ? `<button data-w="${w}">${w}</button>` : '<button class="no" disabled>?</button>').join('')}</div>
       <h3>SENTENCES</h3><div class="lines">${doneLines.map(l => `<button data-l="${l}">${l}</button>`).join('') || '<small>Finish tasks to fill this page.</small>'}</div></div>`;
     for (const b of jr.querySelectorAll('button[data-w]')) b.onclick = () => { heard = true; $('jline').textContent = SENT[b.dataset.w]; say(b.dataset.w + '. ' + SENT[b.dataset.w]); };
@@ -643,28 +708,30 @@ window.Lang = (() => {
   function toggleJournal(open = jr.classList.contains('off')) {
     if (open) {
       if (!$('bag').classList.contains('off')) return;                       // 背包开着时不抢
-      if (document.pointerLockElement) document.exitPointerLock();           // 放开鼠标 → 游戏自己会暂停并显示菜单
-      else if ($('menu').classList.contains('off')) dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+      if (!jr.classList.contains('off')) return;
+      jr.back = !!window.game?.playing;                                       // 从游戏里打开的，关上回到游戏；从设置菜单打开的，关上回到菜单
+      window.game?.furnaceModal(true);                                        // 和熔炉、箱子一样当弹窗：游戏暂停、放开鼠标，但不弹设置菜单（以前菜单盖在手记上面，单词点不了）
       renderJournal();
-    }
+    } else if (jr.classList.contains('off')) return;
     jr.classList.toggle('off', !open);
+    if (!open) window.game?.furnaceModal(false, jr.back);
   }
   addEventListener('keydown', e => {
     if (e.code === 'KeyJ') toggleJournal();
-    else if (e.code === 'Escape' && !jr.classList.contains('off')) toggleJournal(false);
+    else if (e.code === 'Escape' && !jr.classList.contains('off')) { e.stopImmediatePropagation(); toggleJournal(false); } // 这个 Esc 只关手记，别让游戏再拿去关一次设置菜单
   });
   jr.addEventListener('click', e => { if (e.target === jr) toggleJournal(false); });
   if ($('card')) { // 菜单里加两个入口
     const row = ($('settingsCompanion') || $('card')).appendChild(document.createElement('div'));
     row.innerHTML = '<button class="link" id="journalBtn">Journal</button><button class="link" id="guideBtn"></button><label style="display:inline"><input id="wickQuiet" type="checkbox"> Quiet Wick</label>';
     row.insertAdjacentHTML('beforeend', '<div><small>Press T to ask Wick. Press J for your journal. Press F1 for help with new words.</small></div>');
-    row.insertAdjacentHTML('beforeend', '<label>Wick voice <select id="wickVoice"></select></label>');
+    row.insertAdjacentHTML('beforeend', '<label>Fallback voice <select id="wickVoice"></select></label>');
     if($('settingsVoice')){ $('settingsVoice').append($('wickQuiet').closest('label'),$('wickVoice').closest('label')); }
     fillWickVoices();
     $('wickVoice').onchange = e => { // 换声音并试听一句
       wickVoice = enVoices.find(v => v.name === e.target.value) || wickVoice;
       localStorage.setItem('stonisle.wickVoice', wickVoice.name);
-      wsay('Hi! I am Wick!');
+      say('Hi! I am Wick!', false, 1.4, true);
     };
     $('wickQuiet').checked = quiet;
     $('wickQuiet').onchange = e => { quiet = e.target.checked; localStorage.setItem('stonisle.wickQuiet', quiet ? '1' : '0'); };
@@ -675,7 +742,7 @@ window.Lang = (() => {
 
   function lines() { // 游戏里会说出口的每一句话，按说话人分开：生成配音文件时用它
     const wick = new Set(), narrator = new Set(), each = t => Object.values(t).flat();
-    for (const q of QUESTS) wick.add(q.say);
+    for (const q of QUESTS) { wick.add(q.say); if(q.cheer)wick.add(q.cheer); }
     NUM.slice(1).forEach(n => wick.add(n));
     ['Good job!', 'Good job! Level two.', 'Good job! Level three.', 'You did it! Have fun.', 'I do not see one. Let us look around.', 'Hi! I am Wick!',
       'Hello!', 'I am Wick.', 'Move your mouse.', 'Good! Let us go!', 'This is Stonisle.', 'Help me, Friend.'].forEach(t => wick.add(t));
@@ -688,6 +755,8 @@ window.Lang = (() => {
       if (w !== 'shade wolf') SEE.forEach(f => wick.add(f(w)));
     }
     for (const w in SENT) { narrator.add(w); narrator.add(w + '. ' + SENT[w]); }
+    [...Object.values(BLOCK),...Object.values(ITEM)].filter(Boolean).forEach(w=>narrator.add(w));
+    Object.keys(QUEST_GLOSS).forEach(w=>wick.add(w));
     ['hand', 'thing', 'animal'].forEach(t => narrator.add(t));
     ['Read aloud is on.', 'You fell. You are back at the start.'].forEach(t => wick.add(t));
     wick.add('Oh no. Poor moth.'); wick.add('This is your bed now. Come back at night to sleep.'); wick.add('This is your bed now. A monster is near. We can not sleep.'); wick.add('You are dead.'); wick.add('You are back. Be careful!');
@@ -696,5 +765,5 @@ window.Lang = (() => {
     return { wick: [...wick], narrator: [...narrator] };
   }
 
-  return { item, say, auto, look, lines, get quest() { return step; }, get wickVoice() { return wickVoice && wickVoice.name; }, get wick() { return wick && wick.position; }, mob: n => MOB[n] || 'animal', get words() { return [...seen]; }, get voice() { return voice && voice.name; } };
+  return { item, display, chinese, setChinese, say, auto, look, lines, get quest() { return step; }, get wickVoice() { return wickVoice && wickVoice.name; }, get wick() { return wick && wick.position; }, mob: n => MOB[n] || 'animal', get words() { return [...seen]; }, get voice() { return voice && voice.name; } };
 })();

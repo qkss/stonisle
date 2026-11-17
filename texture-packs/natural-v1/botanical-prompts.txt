@@ -1,0 +1,4 @@
+Mode: built-in image_gen.
+Asset: botanical-source-v2.png
+Generate: realistic botanical cutout atlas, 4 columns by 2 rows, transparent background. Top row: rose, sunflower, lily, daffodil flower heads. Bottom row: rapeseed sprig, bamboo, seedling, leafy flower stem. Natural petals and leaf veins, no outlines, no text.
+Edit: background-extraction. Remove all white background and pale halos to actual transparency; preserve eight specimens and exact 4x2 layout, positions, shapes, colors and sizes. Keep pale petals opaque; gaps between stems and leaves transparent. No shadow, glow, background or grid.

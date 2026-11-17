@@ -11,7 +11,7 @@
       if(h.torch||h.n[1]<0)return false;
       const r={x:h.x+h.n[0],y:h.y+h.n[1],z:h.z+h.n[2],n:[...h.n]},key=this.key(r);
       if(r.y<=0||r.y>=64||this.records[key]||!this.supported(r))return false;
-      this.records[key]=r;return true;
+      this.records[key]=r;return key; // 返回 key（真值），联机时 game.js 拿它同步给别人
     }
     remove(key){
       delete this.records[key];const model=this.models.get(key);

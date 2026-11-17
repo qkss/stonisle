@@ -9,14 +9,18 @@ window.Home = (() => {
   const get = (x, y, z) => game.world.get(x, y, z), key = c => c.x + ',' + c.y + ',' + c.z;
   const wick = text => Lang.say(text, false, 1.4);
 
-  // 要记住的事：种下/摘取的时间、已挖的树叶数、最后睡过的床
-  // ponytail: 这份记录不分世界（和任务进度一样）；存档系统按世界分开学习数据时一起迁过去
-  let st; try { st = JSON.parse(localStorage.getItem('stonisle.home')) || {}; } catch (e) { st = {}; }
-  const visiting = window.Net && Net.guest; // 局域网访客：告示牌和箱子用主机的，不动自己的记录
-  if (visiting) st = { ...(Net.state.home || {}) };
-  st.grow = st.grow || {}; st.leaves = st.leaves || 0;
-  st.chests = st.chests || {}; st.signs = st.signs || {};   // 箱子里的东西、告示牌上的字，按位置记
-  const save = () => { if (!visiting) try { localStorage.setItem('stonisle.home', JSON.stringify(st)); } catch (e) { /* 存不下就不记 */ } if (window.Net) Net.home({ signs: st.signs, chests: st.chests }); };
+  // Keep chest contents with their world; migrate the legacy shared data once.
+  const homePreview=new URLSearchParams(location.search).has('preview'),homeId=Number(new URLSearchParams(location.search).get('save'))||1,homeKey='stonisle.home'+(homeId>1?'.'+homeId:'');
+  let st;try{st=game.homeState||(homePreview?{}:JSON.parse(localStorage.getItem(homeKey)||localStorage.getItem('stonisle.home')))||{};}catch(e){st={};}
+  const visiting=window.Net&&Net.guest;
+  if(visiting)st={...(Net.state.home||{})};
+  st.grow=st.grow||{};st.leaves=st.leaves||0;st.chests=st.chests||{};st.signs=st.signs||{};
+  const save=()=>{if(homePreview)return;if(!visiting){try{localStorage.setItem(homeKey,JSON.stringify(st));}catch(e){}game.saveNow();}if(window.Net)Net.home({signs:st.signs,chests:st.chests});};
+  function seedChest(c,items,token){
+    if(visiting)return false;st.seeded ||= {};if(st.seeded[token])return false;
+    const k=key(c);st.chests[k] ||= {};for(const [id,n] of Object.entries(items))st.chests[k][id]=(st.chests[k][id]||0)+n;
+    st.seeded[token]=true;save();return true;
+  }
 
   const alongZ = () => Math.abs(Math.cos(game.yaw)) > Math.abs(Math.sin(game.yaw)); // 玩家面朝南北
   const free = (x, y, z) => { // 这一格是空气，而且不和玩家重叠
@@ -30,15 +34,36 @@ window.Home = (() => {
     return true;
   }
 
+  const bedPreview=new URLSearchParams(location.search).has('preview');
+  const bedKey='stonisle.bed.'+(bedPreview?'preview.':'')+(visiting?'guest.'+location.host+'.'+(Net.state.world||'world'):'save.'+(new URLSearchParams(location.search).get('save')||'1'));
+  let personalBed;try{personalBed=JSON.parse(localStorage.getItem(bedKey));}catch(e){}
+  if(!personalBed&&!visiting&&!(new URLSearchParams(location.search).get('save')>1))personalBed=st.bed;
+  let resting=null;
   function sleep(h) {
-    st.bed = [h.x, h.y, h.z]; save(); // 点一下床就把它记成存档点（倒下后在这里醒来），不管白天黑夜；夜里且附近没有怪物才真的睡到天亮
-    if (game.dayK >= 0.1) return wick('This is your bed now. Come back at night to sleep.');
-    if (game.mobs.some(m => m.type.hostile && Math.hypot(m.x - game.p.x, m.z - game.p.z) < 16)) return wick('This is your bed now. A monster is near. We can not sleep.');
-    wick('Good night!'); st.sleeps = (st.sleeps || 0) + 1; save(); // 记一次“真的睡着了”，任务引导看这个数
-    const el = document.body.appendChild(Object.assign(document.createElement('div'), { style: 'position:fixed;inset:0;background:#05040a;opacity:0;transition:opacity .8s;z-index:7;pointer-events:none' }));
-    requestAnimationFrame(() => { el.style.opacity = 1; });
-    setTimeout(() => { game.time = (Math.floor(game.time / DAY) + 1) * DAY + 12; el.style.opacity = 0; }, 1100); // 跳到第二天清晨；时钟只往前走，工序和生长照常结算
-    setTimeout(() => el.remove(), 2200);
+    if(resting||game.dead)return;
+    personalBed=[h.x,h.y,h.z];
+    try{localStorage.setItem(bedKey,JSON.stringify(personalBed));}catch(e){wick('Could not save your respawn point.');return;}
+    st.bed=personalBed;if(!bedPreview)save();
+    const saved=game.saveNow();
+    if(visiting)Net.checkpoint();
+    const night=game.dayK<.1, safe=!game.mobs.some(m=>m.type.hostile&&Math.hypot(m.x-game.p.x,m.z-game.p.z)<16);
+    const alone=!window.Net?.connected;
+    const start=performance.now(),ns=get(h.x,h.y,h.z)===67;
+    resting={start,h,ns};
+    const el=document.createElement('div');el.style='position:fixed;inset:0;z-index:70;pointer-events:auto;display:grid;place-items:center;color:#eadbc1;font:18px system-ui;background:#090c16;opacity:0;transition:opacity .65s';
+    el.textContent=saved===false?'Save failed — respawn point recorded':visiting?'Respawn point set · Saving with host…':'Respawn point set · Resting…';document.body.append(el);
+    setTimeout(()=>{el.style.opacity='1';},500);
+    setTimeout(()=>{
+      if(alone&&night&&safe&&!game.dead){game.time=(Math.floor(game.time/DAY)+1)*DAY+12;st.sleeps=(st.sleeps||0)+1;if(!bedPreview)save();}
+      const ok=game.saveNow();el.textContent=ok===false?'Could not save. Please try again.':'Respawn point set';el.style.opacity='0';
+    },1600);
+    setTimeout(()=>{resting=null;el.remove();},2300);
+  }
+  function sleepCamera(camera){
+    if(!resting)return;
+    const t=Math.min(1,(performance.now()-resting.start)/600),k=t*t*(3-2*t),h=resting.h;
+    camera.position.lerp(new THREE.Vector3(h.x+.5,h.y+.78,h.z+.5),k);
+    const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(.85,resting.ns?0:Math.PI/2,.10,'YXZ'));camera.quaternion.slerp(q,k);
   }
 
   // 门开到哪一侧，开的时候看周围决定（关着的门不记方向）：
@@ -149,7 +174,7 @@ window.Home = (() => {
     return id;
   }
 
-  const spawn = () => (st.bed && isBed(get(...st.bed)) ? { x: st.bed[0] + 0.5, y: st.bed[1] + 1, z: st.bed[2] + 0.5 } : null);
+  const spawn = () => (personalBed && isBed(get(...personalBed)) ? { x: personalBed[0]+.5,y:personalBed[1]+1,z:personalBed[2]+.5 } : null);
 
   function growTree(x, y, z) { // 和自然生成的阔叶树同一个样子：4 格树干，两层大叶两层小叶
     for (let i = 1; i <= 5; i++) { const b = get(x, y + i, z); if (b !== 0 && b !== LEAF) return false; } // 头顶没地方就先不长
@@ -196,45 +221,27 @@ window.Home = (() => {
   // ponytail: 箱子里按“物品 → 数量”记，27 格就是最多 27 种物品，每种不限数量；要做成一格一叠再改存法。
   const SLOTS = 27;
   let chestKey = null;
-  const css = document.createElement('style');
-  css.textContent = `
-    #bag.chest > #sack { flex-direction: column; gap: 14px; flex-wrap: nowrap; }
-    #bag.chest > #sack > section:not(.chestKeep) { display: none; }
-    #chestBox { order: -1; }
-    #chestGrid { display: grid; grid-template-columns: repeat(9, 40px); gap: 5px; }
-    #chestGrid div { position: relative; width: 40px; height: 40px; border-radius: 6px; background: #1d1712 center/cover; box-shadow: inset 0 0 0 1px #6b513a, inset 0 2px 5px #000c; }
-    #chestGrid div[data-id] { cursor: pointer; }
-    #chestGrid b { position: absolute; right: 3px; bottom: 0; font: 10px ui-monospace, monospace; color: #fff; text-shadow: 0 0 2px #000; }
-    body.mobile #chestGrid { grid-template-columns: repeat(9, 32px); gap: 3px; } body.mobile #chestGrid div { width: 32px; height: 32px; }`;
-  document.head.appendChild(css);
-  const bagBox = $('grid').parentElement, bagHint = (bagBox && bagBox.querySelector('small')) || { textContent: '' }, HINT = bagHint.textContent; // 测试里的假页面没有这些节点
-  if (bagBox) bagBox.classList.add('chestKeep');
-  function drawChest() {
-    let box = $('chestBox');
-    if (!box) {
-      box = $('sack').appendChild(Object.assign(document.createElement('section'), { id: 'chestBox', className: 'chestKeep' }));
-      box.innerHTML = '<h3>Chest<small id="chestHint"></small></h3><div id="chestGrid"></div>';
-      $('bag').classList.add('chest'); bagHint.textContent = 'Click an item to put it in the chest.';
-    }
-    const items = st.chests[chestKey], ids = Object.keys(items);
-    $('chestHint').textContent = ids.length >= SLOTS ? 'The chest is full.' : 'Click an item to take it out.';
-    $('chestGrid').innerHTML = ids.map(id => `<div data-id="${id}" title="${Lang.item(+id)}" style="background-image:url(${game.icon(+id)})"><b>${items[id]}</b></div>`).join('') + '<div></div>'.repeat(Math.max(0, SLOTS - ids.length));
-    for (const d of $('chestGrid').querySelectorAll('[data-id]')) d.onclick = () => { const id = +d.dataset.id; game.give(id, items[id]); delete items[id]; save(); game.renderBag(); drawChest(); };
-  }
-  function openChest(h) {
-    chestKey = key(h); st.chests[chestKey] = st.chests[chestKey] || {};
-    if ($('bag').classList.contains('off')) dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' })); // 让游戏自己打开背包（暂停、放开鼠标都由它处理）
-    drawChest();
-  }
-  $('grid').addEventListener('click', e => { // 箱子开着时，点背包里的物品 = 放进箱子（抢在游戏“放进快捷栏”之前）
-    const cell = chestKey && e.target.closest('#grid > div[title]'); if (!cell) return;
-    const id = Object.keys(game.inv).map(Number).find(i => game.inv[i] > 0 && Lang.item(i) === cell.title); if (!id) return;
-    e.stopPropagation();
-    const items = st.chests[chestKey]; if (!(id in items) && Object.keys(items).length >= SLOTS) return; /* 满了：放不进去 */
-    items[id] = (items[id] || 0) + game.inv[id]; delete game.inv[id];
-    save(); game.renderBar(); game.renderBag(); drawChest();
-  }, true);
-  setInterval(() => { if (chestKey && $('bag').classList.contains('off')) { chestKey = null; if ($('chestBox')) $('chestBox').remove(); $('bag').classList.remove('chest'); bagHint.textContent = HINT; } }, 300); // 背包关了，箱子栏跟着收起
+  let chestRoot=null,chestBag=null;
+  function chestSlots(){st.chestSlots ||= {};return st.chestSlots[chestKey];}
+  function flushChest(){if(!chestKey)return;const items={};for(const v of chestSlots())if(v)items[v.id]=(items[v.id]||0)+v.n;st.chests[chestKey]=items;save();game.renderBar();drawChest();}
+  function insertChest(index,id,n,exclude=-1){if(!chestKey||visiting)return 0;return ContainerTransfer.insert(chestSlots(),id,n,{size:SLOTS,target:index,exclude});}
 
-  return { get sleeps() { return st.sleeps || 0; }, use, dug, spawn, label, sync(d) { st.signs = d.signs || {}; st.chests = d.chests || {}; lastRead = ''; if (!visiting) save(); } }; // sync：联机时别人改了告示牌或箱子
+  function initChest(){if(chestRoot)return;chestRoot=document.createElement('div');chestRoot.id='chestOverlay';chestRoot.hidden=true;
+    chestRoot.innerHTML='<section role="dialog" aria-modal="true" aria-label="箱子与背包"><button class="station-close" aria-label="关闭箱子">×</button><div class="station-layout"><div class="station-controls"><h2>箱子</h2><p id="chestHint">点击背包存入，点击箱子物品取回。</p><div id="chestGrid" aria-label="箱子物品格"></div><p id="chestNote" role="status"></p></div></div></section>';
+    document.body.append(chestRoot);const layout=chestRoot.querySelector('.station-layout'),controls=layout.firstElementChild;
+    chestBag=StationInventory.create(layout,{accept:()=>!visiting,onSelect:(id,amount)=>{if(!chestKey||visiting)return;const moved=insertChest(-1,id,Math.min(game.inv[id]||0,amount??Infinity));game.inv[id]-=moved;$('chestNote').textContent=moved?'已存入 '+Lang.display(id)+' × '+moved:'箱子已满';flushChest();}});layout.append(controls);
+    chestRoot.querySelector('.station-close').onclick=closeChest;
+    chestRoot.addEventListener('keydown',e=>{e.stopPropagation();if(e.code==='Escape'||e.code==='KeyE'){e.preventDefault();closeChest();}if(e.code==='Tab'){const nodes=[...chestRoot.querySelectorAll('button:not(:disabled)')],first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+  }
+  function drawChest(){if(!chestKey)return;const slots=chestSlots();chestBag.render();$('chestHint').textContent=slots.filter(Boolean).length+' / '+SLOTS+' 格';$('chestGrid').replaceChildren();
+    for(let i=0;i<SLOTS;i++){const v=slots[i],b=document.createElement('button');b.className='station-item';b.type='button';b.setAttribute('aria-label','箱子格 '+(i+1)+'：'+(v?Lang.display(v.id)+' × '+v.n:'空'));if(v){const img=document.createElement('img'),n=document.createElement('b');img.src=game.icon(v.id);img.alt='';n.textContent=v.n;b.append(img,n);}b.disabled=visiting;
+      StationInventory.bindStack(b,half=>{const v=slots[i];if(!chestKey||visiting||!v)return;const n=half?Math.ceil(v.n/2):v.n;game.give(v.id,n);v.n-=n;if(!v.n)slots[i]=null;flushChest();},{kind:'chest',index:i,get:()=>chestKey&&!visiting?slots[i]:null,remove:n=>{slots[i].n-=n;if(!slots[i].n)slots[i]=null;},refresh:flushChest});
+      StationInventory.dropTarget(b,(id,n,src)=>{if(src.kind==='chest'&&src.index===i)return 0;const accepted=insertChest(i,id,n,src.kind==='chest'?src.index:-1);if(accepted)setTimeout(flushChest,0);return accepted;});$('chestGrid').append(b);
+    }
+  }
+  function openChest(h){initChest();chestKey=key(h);st.chests[chestKey] ||= {};st.chestSlots ||= {};const saved=st.chestSlots[chestKey],total={};for(const v of saved||[])if(v)total[v.id]=(total[v.id]||0)+v.n;const items=st.chests[chestKey];if(!saved||Object.keys({...total,...items}).some(id=>(total[id]||0)!==(items[id]||0)))st.chestSlots[chestKey]=Array.from({length:SLOTS},(_,i)=>{const id=Object.keys(items)[i];return id?{id:+id,n:items[id]}:null;});chestRoot.hidden=false;game.furnaceModal(true);chestBag.reset();$('chestNote').textContent='点击左侧背包物品即可存入。';drawChest();chestRoot.querySelector('.station-close').focus();}
+  function closeChest(){if(!chestKey)return;chestKey=null;chestRoot.hidden=true;game.saveNow();game.furnaceModal(false);}
+  setInterval(()=>{if(!chestKey)return;const [x,y,z]=chestKey.split(',').map(Number);if(!Core.isChest(game.world.get(x,y,z))||Math.hypot(game.p.x-x-.5,game.p.y-y,game.p.z-z-.5)>7||game.dead)closeChest();},300);
+
+  return { openChest,closeChest,get chestOpened(){return !!chestKey;},get state(){return st;},seedChest,sleepCamera, get sleeping(){return !!resting;}, get sleeps() { return st.sleeps || 0; }, use, dug, spawn, label, sync(d) { st.signs = d.signs || {}; st.chests = d.chests || {}; lastRead = ''; if (!visiting) save(); } }; // sync：联机时别人改了告示牌或箱子
 })();

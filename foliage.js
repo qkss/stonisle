@@ -59,6 +59,11 @@
         };
         material.customProgramCacheKey=()=>`foliage-shared-wind-v3-${i}`;
       }
+      for(const [name,source] of [['cherryBasic',this.basic],['cherryLit',this.lit],['cherryDepth',this.depth]]){
+        const m=source.clone();m.map=CherryMaterial.texture();const compile=source.onBeforeCompile;
+        m.onBeforeCompile=function(shader,renderer){compile.call(this,shader,renderer);shader.fragmentShader=shader.fragmentShader.replaceAll('8.01+vUv.x','74.01+vUv.x');};
+        m.customProgramCacheKey=()=>name+'-blossom-wind-v1';this[name]=m;
+      }
       this.grassBasic=new THREE.MeshBasicMaterial({map:atlas,vertexColors:true,side:THREE.DoubleSide});
       this.grassLit=new THREE.MeshLambertMaterial({map:atlas,vertexColors:true,side:THREE.DoubleSide});
       this.grassDepth=new THREE.MeshDepthMaterial({side:THREE.DoubleSide,depthPacking:THREE.RGBADepthPacking});

@@ -28,7 +28,8 @@
   const get = (x, y, z) => game.world.get(x, y, z), key = (x, y, z) => x + ',' + y + ',' + z;
   const wick = t => Lang.say(t, false, 1.4), free = () => window.Creative && Creative.on;
   const spend = id => { if (!free()) game.inv[id]--; };
-  const swap = (from, to) => { game.inv[from]--; game.give(to, 1); const i = game.slots.indexOf(from); if (i >= 0 && !(game.inv[from] > 0)) game.slots[i] = to; }; // 桶换成另一种状态，还留在原来那一格
+  // 桶换成另一种状态后一定留在手里那一格；同种桶有好几个时，剩下没换的挪到一个空格（以前手里还是满桶，再点水就舀不起来）
+  const swap = (from, to) => { const i = game.slots.indexOf(from); game.inv[from]--; game.give(to, 1); if (i < 0) return; const j = game.slots.indexOf(to); if (j >= 0 && j !== i) game.slots[j] = 0; game.slots[i] = to; if (game.inv[from] > 0 && !game.slots.includes(from)) { const k = game.slots.indexOf(0); if (k >= 0) game.slots[k] = from; } }; // 先记下桶在哪一格：扣完数量那一格会被清空 // 桶换成另一种状态，还留在原来那一格
 
   function waterAhead() { // 准星前面第一格水（比挡路的方块近才算）
     const p = game.p, d = game.lookDir(), o = [p.x, p.y + game.eye, p.z];
@@ -41,18 +42,19 @@
   }
 
   function use(h, id) {
+    if(window.HerbFarming?.use(h,id))return true;
     if (!(game.inv[id] > 0)) return false;
     if (FILL[id]) { // 空桶：装水
       const w = waterAhead();
       if (!w) return wick('Point at water to fill the bucket.'), true;
-      game.setBlock(w[0], w[1], w[2], 0); swap(id, FILL[id]);
+      game.setBlock(w[0], w[1], w[2], 0); swap(id, FILL[id]); if (game.scoop) game.scoop(true, w);
       return true;
     }
     if (POUR[id]) { // 装了水的桶：倒在准星指着的那一面外
       if (!h || !(h.n[0] || h.n[1] || h.n[2])) return true;
       const x = h.x + h.n[0], y = h.y + h.n[1], z = h.z + h.n[2], b = get(x, y, z);
       if (b && !Core.PASS.has(b)) return true;
-      game.setBlock(x, y, z, WATER); swap(id, POUR[id]);
+      game.setBlock(x, y, z, WATER); swap(id, POUR[id]); if (game.scoop) game.scoop(false, [x, y, z]);
       return true;
     }
     if (!h) return false;
@@ -83,7 +85,7 @@
       return true;
     }
     if (Core.PLANTS[id] && id !== SPROUT) { // 直接放花和竹子：要放在土上；竹子还能接在竹子上
-      if (!top || !(soil(b) || (id === BAMBOO && b === BAMBOO))) return wick('It needs dirt.'), true;
+      if (!top || !(soil(b) || (id===311&&b===15) || (id === BAMBOO && b === BAMBOO))) return wick('It needs dirt.'), true;
       if (get(x, y, z)) return true;
       game.setBlock(x, y, z, id); spend(id);
       if (id === BAMBOO && b !== BAMBOO) { st.bamboo[key(x, y, z)] = game.time; save(); }
@@ -93,6 +95,7 @@
   }
 
   function dug(h, id) { // 这一格已经是空气了
+    const herb=window.HerbFarming?.dug(h,id);if(herb!==undefined)return herb;
     const k = key(h.x, h.y, h.z);
     if (FRUIT[id]) return FRUIT[id];                // 结果的树叶：摘到 1 个果子，叶子不留（免得摆回去再摘）
     if (id === FIRE) { delete st.fires[k]; save(); flames(); return FIRE; }
@@ -158,5 +161,24 @@
     if (changed) save();
   }, 3000);
 
-  window.Farm = { use, dug };
+  // Plans have no side effects: cargo must reserve every input/output before committing.
+  function automationPlan(p,mode,item,vacant=false){
+    const k=key(p.x,p.y,p.z),b=get(p.x,p.y,p.z),base=get(p.x,p.y-1,p.z),H=window.HerbFarming,d=H?.byId(mode==='seed'?item:b),hs=game.herbState;
+    const plan=(edits,cost,outputs,apply=()=>{})=>({edits,cost,outputs,apply});
+    if(mode==='seed'){
+      if(b&&!vacant||!soil(base))return null;
+      if(d&&item===d.seed)return plan([[p.x,p.y-1,p.z,98],[p.x,p.y,p.z,d.young]],{id:item,n:1},[],()=>{hs.crops[k]={id:d.id,age:0};});
+      if(SEED[item])return plan([[p.x,p.y-1,p.z,98],[p.x,p.y,p.z,99]],{id:item,n:1},[],()=>{st.crops[k]={to:SEED[item],t:game.time};save();});
+    }
+    if(mode==='fertilize'&&item===105){
+      const c=hs.crops[k];if(d&&c&&b!==d.id){const age=Math.min(d.seconds,c.age+d.seconds*.35);return plan([[p.x,p.y,p.z,H.stage(d,age)]],{id:105,n:1},[],()=>{c.age=age;});}
+      if(b===99&&st.crops[k])return plan([[p.x,p.y,p.z,st.crops[k].to]],{id:105,n:1},[],()=>{delete st.crops[k];save();});
+    }
+    if(mode==='harvest'){
+      if(d&&b===d.id){const loot=H.loot(d,!!hs.crops[k],hs.transplants[k],Math.random()),outputs=[{id:d.product||d.id,n:d.product?3:1}];if(loot.seeds)outputs.push({id:d.seed,n:loot.seeds});return plan([[p.x,p.y,p.z,0]],null,outputs,()=>{delete hs.crops[k];delete hs.transplants[k];});}
+      if(SEED_OF[b])return plan([[p.x,p.y,p.z,0]],null,[{id:b,n:1},{id:SEED_OF[b],n:base===98?2:1}]);
+    }
+    return null;
+  }
+  window.Farm = { use, dug, automationPlan };
 })();

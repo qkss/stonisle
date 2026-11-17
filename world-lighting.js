@@ -31,10 +31,11 @@
   const HELD_TORCH=1.4,PLACED_TORCH=1.1; // 火把的亮度。原来都是 3.4，近处的浅色石头会被照得发白刺眼；想再亮或再暗改这两个数
   window.WorldLighting=class {
     constructor(scene,world){
-      this.world=world;world.lighting=true;this.scene=scene;this.emitters=new Map();this.clock=0;this.shadowClock=0;this.lampChunks=new Map();
+      this.world=world;world.lighting=true;this.scene=scene;this.emitters=new Map();this.clock=0;this.shadowClock=0;this.lampChunks=new Map();this.lavaChunks=new Map();
       this.torch=this.add('held-torch',{color:0xffb65e,intensity:0,range:12});
       this.torch.decay=1.25; // Broad, soft falloff keeps the floor and side walls readable.
       this.placed=Array.from({length:4},(_,i)=>this.add('placed-'+i,{intensity:0,range:7}));
+      this.lavaLights=Array.from({length:4},(_,i)=>{const l=this.add('lava-'+i,{color:0xff8735,intensity:0,range:11});l.decay=1.2;return l;});
       this.torch.castShadow=true;this.torch.shadow.mapSize.set(256,256);this.torch.shadow.camera.near=.1;this.torch.shadow.camera.far=12;this.torch.shadow.bias=-.002;this.torch.shadow.normalBias=.025;
     }
     add(id,{color=0xffbc70,intensity=1,range=7}={}){
@@ -46,8 +47,16 @@
       const data=this.world.chunk(cx,cz),positions=[];
       for(let i=data.indexOf(59);i>=0;i=data.indexOf(59,i+1))positions.push(new THREE.Vector3(cx*16+(i&15)+.5,(i>>8)+.5,cz*16+((i>>4)&15)+.5));
       this.lampChunks.set(cx+','+cz,positions);
+      const cells=new Map();
+      for(let i=data.indexOf(287);i>=0;i=data.indexOf(287,i+1)){
+        const x=cx*16+(i&15),y=i>>8,z=cz*16+((i>>4)&15);
+        if(this.world.get(x,y+1,z)===287)continue;
+        const key=Math.floor(x/3)+','+Math.floor(z/3),p=new THREE.Vector3(x+.5,y+1.15,z+.5),old=cells.get(key);
+        if(!old||p.y>old.y)cells.set(key,p);
+      }
+      this.lavaChunks.set(cx+','+cz,[...cells.values()]);
     }
-    drop(cx,cz){this.lampChunks.delete(cx+','+cz);}
+    drop(cx,cz){this.lampChunks.delete(cx+','+cz);this.lavaChunks.delete(cx+','+cz);}
     // 头顶有遮挡的地方不是一片死黑：旁边 3 格内只要有露天的地方，就有散进来的天光，离得越近越亮。
     // 树枝下、屋檐下、门口里面都还看得清；真正的室内深处和洞里四周都被挡住，才是全黑（.015）。
     roofAt(x,z){for(let y=63;y>=0;y--)if(!clear(this.world.get(x,y,z)))return y;return -1;}
@@ -91,9 +100,17 @@
       LAMP_DAY.value=1-.75*Math.max(0,Math.min(1,Number.isFinite(daylight)?daylight:0));
       const nearby=[...this.lampChunks.values()].flat().filter(p=>p.distanceToSquared(position)<324).sort((a,b)=>a.distanceToSquared(position)-b.distanceToSquared(position));
       this.placed.forEach((lamp,i)=>{const source=nearby[i],torch=source&&source.torch;lamp.intensity=source?(torch?PLACED_TORCH*this.torchScale(source,daylight)*(1+.045*Math.sin(this.clock*7+i)+.025*Math.sin(this.clock*13.7+i)):LAMP):0;lamp.distance=torch?14:7;lamp.decay=torch?1:2;if(source)lamp.position.copy(source);});
+      const molten=[...this.lavaChunks.values()].flat().filter(p=>p.distanceToSquared(position)<400).sort((a,b)=>a.distanceToSquared(position)-b.distanceToSquared(position));
+      const chosen=[];for(const p of molten){if(chosen.every(q=>p.distanceToSquared(q)>6.25))chosen.push(p);if(chosen.length===this.lavaLights.length)break;}
+      this.lavaLights.forEach((lamp,i)=>{const p=chosen[i];if(!p){lamp.intensity=0;return;}lamp.position.copy(p);
+        const phase=p.x*.43+p.z*.31,pulse=1+.06*Math.sin(this.clock*.78+phase)+.035*Math.sin(this.clock*1.13-phase);
+        lamp.intensity=2.0*(.35+.65*this.torchScale(p,daylight))*pulse;
+      });
       this.torch.intensity=on?HELD_TORCH*this.torchScale(position,daylight)*(1+.045*Math.sin(this.clock*7)+.025*Math.sin(this.clock*13.7)+.018*Math.sin(this.clock*3.2)):0;
       if(on && this.clock-this.shadowClock>.12){this.shadowClock=this.clock;return true;}return false;
     }
+    // 手和手里的工具画在单独的小场景里（game.js 的 handScene），世界里的火把/灯照不到它们；按点光源同样的衰减算眼睛这里有多亮，交给手的补光。
+    localAt(pos){let sum=0;for(const l of [...this.placed,...this.lavaLights])if(l.intensity>0){const d=l.position.distanceTo(pos);if(d<l.distance)sum+=l.intensity*Math.pow(1-d/l.distance,l.decay);}return sum;}
     static decorate(material){decorate(material);}
     static object(material){const exposure={value:1};decorate(material,exposure);return exposure;}
   };

@@ -15,18 +15,39 @@
 
   const guest = !hello.host, id = Math.random().toString(36).slice(2, 10), ME = 'stonisle.lan.me', HOSTING = 'stonisle.lan.hosting', NAME = 'stonisle.lan.name';
   const state = hello.state || {}, players = new Map(); // 别的玩家：id → { name, host, mesh, to: [x, y, z, yaw] }
+  let clockSequence=0,transitSequence=0;
   let gearKey = '', es = null, out = [], applying = false, last = '', name = localStorage.getItem(NAME) || '', pk = !!state.pk;
   const saveId = parseInt(new URLSearchParams(location.search).get('save'), 10) || 1; // 主机正在玩的是哪个世界（和 game.js 的算法一样）
   const read = k => { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } };
   const post = (path, data) => fetch(path, { method: 'POST', body: JSON.stringify(data) }).catch(() => {});
   const send = m => { if (es) out.push(m); };
+  async function itemRequest(path,data){
+    for(;;){
+      const r=await post(path+'?id='+id,data);
+      if(r){if(!r.ok)return null;try{return (await r.json()).item;}catch(e){}}
+      await new Promise(resolve=>setTimeout(resolve,1000));
+    }
+  }
+
 
   window.Net = {
     guest, state,
-    guestSave() { const me = read(ME); return { edits: state.edits || {}, time: state.time, inv: me.inv, slots: me.slots, equip: me.equip }; },
+    signal(uid){send({t:'asignal',uid});},
+    transit(carts){if(!guest)send({t:'transit',carts:[...carts,...Object.values(game.transitState.devices||{})],seq:++transitSequence});},
+    async cargo(request){const payload={...request,op:crypto.randomUUID()};for(;;){try{const r=await fetch('/net/transit?id='+id,{method:'POST',body:JSON.stringify(payload)});if(r.ok)return await r.json();if(r.status===403)return {ok:false,n:0};}catch(e){}await new Promise(r=>setTimeout(r,800));}},
+    guards(data){send({t:'cg',data});},
+    guardHit(id,dealt){send({t:'gh',id,dealt});},
+    savePlayer(){try{localStorage.setItem(ME,JSON.stringify({inv:game.inv,slots:game.slots,equip:game.equip,cityEffects:game.cityEffects?.toJSON()}));return true;}catch(e){return false;}},
+    checkpoint(){send({t:'checkpoint'});},
+    get connected(){return !!es&&es.readyState===1;},
+    get playerId(){return id;},
+    throwItem(item){return itemRequest('/net/drop',item);},
+    pickItem(key){return itemRequest('/net/pick',{key});},
+    guestSave() { const me = read(ME); return { transitState:{carts:(state.transitState?.carts||[]).filter(c=>c.kind!=='device'),devices:Object.fromEntries((state.transitState?.carts||[]).filter(c=>c.kind==='device').map(c=>[c.uid,c]))},castleGuards:state.castleGuards||{}, exploration:state.exploration, edits: state.edits || {}, torches: state.torches || {}, time: state.time, inv: me.inv, slots: me.slots, equip: me.equip, cityEffects:me.cityEffects }; },
     world(w) { if (guest) for (const k in state.log || {}) w.set(...k.split(',').map(Number), state.log[k]); }, // 主机开门之后的改动
     block(x, y, z, b) { if (!applying) send({ t: 'b', x, y, z, id: b }); },
     home(d) { if (!applying) send({ t: 'h', d }); },
+    torch(k, r) { if (!applying) send({ t: 'tc', k, r }); }, // 放下/收回一支火把（火把不是方块，不走 block）
     // —— 生物和战斗 ——主机算全部生物；怪物追最近的玩家，咬到访客就发 hurt；访客打中生物发 hit，打死了主机发 loot
     others() { return [...players].filter(([, pl]) => pl.to && !pl.dn).map(([pid, pl]) => ({ id: pid, x: pl.to[0], y: pl.to[1], z: pl.to[2], held: pl.held, cloak: pl.cloak, low: pl.low })); },
     hurt(to, d, slow, push) { send({ t: 'hurt', to, d, slow, push: push || null }); },
@@ -54,27 +75,37 @@
     const x = c.getContext('2d'); x.font = 'bold 34px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.fillStyle = '#0009'; x.fillRect(0, 8, 256, 48); x.fillStyle = '#fff'; x.fillText(pname, 128, 33);
     const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); tag.scale.set(1.4, 0.35, 1); tag.position.y = 2.2; g.add(tag);
-    g.visible = false; game.scene.add(g);
+    g.userData.weaponSkin='default';g.visible = false; game.scene.add(g);
     return g;
   }
   function join(pl) { if (pl.id !== id && !players.has(pl.id)) players.set(pl.id, { name: pl.name, host: pl.host, mesh: avatar(pl.id, pl.name), to: null, ph: 0 }); list(); }
-  function sendLook() { send({ t: 'look', look: Avatar.look, gear: [...game.equip] }); gearKey = game.equip.join(); }
-  function leave(pid) { const pl = players.get(pid); if (pl) { game.scene.remove(pl.mesh); players.delete(pid); } list(); }
+  function sendLook() { send({ t: 'look', look: Avatar.look, gear: [...game.equip], weaponSkin:window.WeaponSkins?.selected||'default' }); gearKey = game.equip.join(); }
+  function leave(pid) { const pl = players.get(pid); if (pl) { game.scene.remove(pl.mesh); players.delete(pid); } game.lighting.lampChunks.delete('held:' + pid); list(); }
 
   function handle(m) {
-    if (m.t === 'roster') m.players.forEach(join);
+    if(m.t==='asignal'){if(!guest)window.Automation?.signal?.(m.uid);return;}
+    if(m.t==='transit'){state.transitState={carts:m.carts};window.Transit?.sync(m.carts);return;}
+    if(m.t==='drops'){if(window.Drops)Drops.syncShared(m.items);}
+    else if(m.t==='drop'){if(window.Drops)Drops.addShared(m.item);}
+    else if(m.t==='dropGone'){if(window.Drops)Drops.removeShared(m.key);}
+    else if (m.t === 'roster') m.players.forEach(join);
     else if (m.t === 'join') { join(m); last = ''; sendLook(); }                       // 有人进来：下一拍把自己的位置再发一次
     else if (m.t === 'leave') leave(m.id);
-    else if (m.t === 'p') { const pl = players.get(m.from); if (pl) { if (!pl.to) pl.mesh.position.set(m.x, m.y, m.z); pl.to = [m.x, m.y, m.z, m.yaw]; if (m.held !== pl.held) Avatar.hold(pl.mesh, m.held); pl.held = m.held; pl.cloak = m.cloak; pl.low = m.low; pl.air = m.air; pl.dn = m.dn; if (m.sw && !(pl.sw > 0)) pl.sw = 0.3; /* 对方在挥手：播 0.3 秒的挥动 */ pl.mesh.visible = true; } }
-    else if (m.t === 'look') { const pl = players.get(m.from); if (pl) { const old = pl.mesh; pl.mesh = avatar(m.from, pl.name, m.look, m.gear); pl.mesh.position.copy(old.position); pl.mesh.rotation.y = old.rotation.y; pl.mesh.visible = old.visible; Avatar.hold(pl.mesh, pl.held); game.scene.remove(old); } }
+    else if (m.t === 'p') { const pl = players.get(m.from); if (pl) { if (!pl.to) pl.mesh.position.set(m.x, m.y, m.z); pl.to = [m.x, m.y, m.z, m.yaw, m.pitch || 0]; if (m.ws && m.ws !== pl.ws) { pl.ws = m.ws; pl.mesh.userData.weaponSkin = m.ws; pl.held = -1; } if (m.held !== pl.held) Avatar.hold(pl.mesh, m.held); /* ws：手里这把剑的皮肤（可能是捡来的） */ pl.held = m.held; if ((m.bk || 0) !== (pl.bk || 0) || m.bs !== pl.bs) { pl.bs = m.bs; pl.mesh.userData.reachAt = performance.now(); Avatar.back(pl.mesh, m.bk, m.bs); } pl.bk = m.bk || 0; pl.cloak = m.cloak; pl.low = m.low; pl.air = m.air; pl.dn = m.dn; if (m.sw && !(pl.sw > 0)) pl.sw = 0.3; /* 对方在挥手：播 0.3 秒的挥动 */ pl.mesh.visible = true; } }
+    else if (m.t === 'look') { const pl = players.get(m.from); if (pl) { const old = pl.mesh; pl.mesh = avatar(m.from, pl.name, m.look, m.gear); pl.mesh.position.copy(old.position); pl.mesh.rotation.y = old.rotation.y; pl.mesh.visible = old.visible;pl.mesh.userData.weaponSkin=pl.ws||m.weaponSkin||'default'; Avatar.hold(pl.mesh, pl.held); Avatar.back(pl.mesh, pl.bk, pl.bs); game.scene.remove(old); } }
     else if (m.t === 'm' && guest) game.mobSync(m.list);
+    else if(m.t==='cg'&&guest){game.guardState.cities=m.data.cities||{};window.CastleGuards?.sync(m.data.units||[]);}
+    else if(m.t==='gh'&&!guest){const a=window.CastleGuards?.guards.find(a=>a.id===m.id),p=Net.others().find(p=>p.id===m.from);if(a&&p&&window.CityControl?.hostile(a.city)&&Math.hypot(a.x-p.x,a.y-p.y,a.z-p.z)<=60)CastleGuards.hurt(a,m.dealt,p);}
     else if (m.t === 'hit' && !guest) { const r = game.mobHit(m.id, m.dealt, m.dx, m.dz); if (r && r.loot) send({ t: 'loot', to: m.from, items: r.loot, sad: r.sad }); }
     else if (m.t === 'loot') { if (m.to === id) game.takeLoot(m.items, m.sad); }
     else if (m.t === 'hurt') { if (m.to === id) { game.hurt(m.d); if (m.slow) game.slow(); if (m.push) game.push(m.push[0], m.push[1]); } }
     else if (m.t === 'pk') { if (pk && m.to === id) game.hurt(m.d); }
     else if (m.t === 'pkmode') { pk = m.on; list(); }
     else if (m.t === 'b') { applying = true; try { game.setBlock(m.x, m.y, m.z, m.id); } finally { applying = false; } }
+    else if (m.t === 'tc') { if (m.r) game.torches.records[m.k] = m.r; else game.torches.remove(m.k); } // 模型和光源下一帧由 PlacedTorches.update 建好
     else if (m.t === 'h') { applying = true; try { Home.sync(m.d); } finally { applying = false; } }
+    else if(m.t==='checkpoint'&&!guest){send({t:'checkpointSaved',to:m.from,ok:game.saveNow()!==false});}
+    else if(m.t==='checkpointSaved'&&m.to===id){Lang.say(m.ok?'World saved. Respawn point set.':'The host could not save. Please try again.',false,1.4);}
     else if (m.t === 't' && guest) game.time = m.time;
     else if (m.t === 'taken') { sessionStorage.removeItem(HOSTING); disconnect(); const b = document.getElementById('lan'); if (b) b.checked = false; list(); if (info) info.textContent = 'Another window on this computer is hosting now. This window is playing alone.'; }
     else if (m.t === 'closed') { disconnect(); document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:#000c;color:#fff;font:20px system-ui;text-align:center">The host closed the world.<br>Ask them to open it again, then reload this page.</div>'); }
@@ -112,8 +143,8 @@
   }
   async function setOpen(on) {
     if (on) {
-      const h = read('stonisle.home');
-      const r = await post('/net/open', { on: true, world: read('stonisle.save.v2' + (saveId > 1 ? '.' + saveId : '')).name || 'World', edits: game.world.edits, home: { signs: h.signs || {}, chests: h.chests || {} }, time: game.time });
+      const h = window.Home?.state || read('stonisle.home');
+      const r = await post('/net/open', { on: true, transitState:game.transitState, world: read('stonisle.save.v2' + (saveId > 1 ? '.' + saveId : '')).name || 'World', castleGuards:game.guardState, exploration:game.exploration, edits: game.world.edits, torches: game.torches.records, home: { signs: h.signs || {}, chests: h.chests || {} }, time: game.time });
       if (r && r.ok) { sessionStorage.setItem(HOSTING, '1'); hello.addrs = (await r.json()).addrs; connect(); send({ t: 'pkmode', on: pk }); }
     } else { sessionStorage.removeItem(HOSTING); disconnect(); await post('/net/open', { on: false }); }
     list();
@@ -133,20 +164,24 @@
     list();
     setInterval(() => { // 每 100ms：自己的位置变了就报一次，攒着的消息一起发
       if (!es || es.readyState !== 1) return; /* 连接还没建好就发会被服务器拒掉，第一批消息（形象、装备）就丢了；先攒着 */
-      const p = game.p, held = game.held, cloak = game.cloak, low = game.low, sw = game.swinging, air = game.air, dn = game.dead, now = [p.x, p.y, p.z, game.yaw].map(v => +v.toFixed(2)).join() + held + cloak + low + sw + air + dn;
-      if (now !== last) { last = now; out.push({ t: 'p', x: p.x, y: p.y, z: p.z, yaw: game.yaw, held, cloak, low, sw, air, dn }); }
+      const p = game.p, held = game.held, bk = game.back, ws = game.skinFor(held), bs = game.skinFor(bk), cloak = game.cloak, low = game.low, sw = game.swinging, air = game.air, dn = game.dead, now = [p.x, p.y, p.z, game.yaw, game.pitch].map(v => +v.toFixed(2)).join() + held + '/' + bk + ws + bs + cloak + low + sw + air + dn;
+      if (now !== last) { last = now; out.push({ t: 'p', x: p.x, y: p.y, z: p.z, yaw: game.yaw, pitch: game.pitch, held, bk, ws, bs, cloak, low, sw, air, dn }); }
       if (game.equip.join() !== gearKey) sendLook();                          // 换了装备：别人看到的样子跟着变
       if (!guest && players.size) out.push({ t: 'm', list: game.mobState() }); // 主机：有访客在，就把全部生物的状态报出去
+      // Every guest displays the host clock, including while either player's menus are open.
+      if(!guest)out.push({t:'t',time:game.time,seq:++clockSequence});
       if (out.length) { post('/net/send?id=' + id, out); out = []; }
     }, 100);
-    setInterval(() => { // 每 5 秒：主机报时间；访客把自己的背包和装备记在本机
+    setInterval(() => { // 每 5 秒：访客把自己的背包和装备记在本机
       if (!es) return;
-      if (guest) localStorage.setItem(ME, JSON.stringify({ inv: game.inv, slots: game.slots, equip: game.equip })); else send({ t: 't', time: game.time });
+      if (guest) localStorage.setItem(ME, JSON.stringify({ inv: game.inv, slots: game.slots, equip: game.equip }));
     }, 5000);
     (function smooth() { // 别人的小人平滑地挪到最新位置
-      for (const pl of players.values()) if (pl.to) { const m = pl.mesh.position; const moved = Math.hypot(pl.to[0] - m.x, pl.to[2] - m.z); m.x += (pl.to[0] - m.x) * 0.3; m.y += (pl.to[1] - m.y) * 0.3; m.z += (pl.to[2] - m.z) * 0.3; pl.mesh.rotation.y = pl.to[3];
+      for (const [pid, pl] of players) if (pl.to) { const m = pl.mesh.position; const moved = Math.hypot(pl.to[0] - m.x, pl.to[2] - m.z); m.x += (pl.to[0] - m.x) * 0.3; m.y += (pl.to[1] - m.y) * 0.3; m.z += (pl.to[2] - m.z) * 0.3; Avatar.aim(pl.mesh, pl.to[3], pl.to[4], 1 / 60, moved > 0.01 || pl.sw > 0);
         pl.ph += moved > 0.01 ? 0.3 : 0; pl.sw = Math.max(0, (pl.sw || 0) - 1 / 60);
         const swim = Avatar.inWater(m.x, m.y, m.z); if (swim) pl.ph += 0.1;
+        const lamps = game.lighting.lampChunks, lampKey = 'held:' + pid; // 别人手里拿着火把：在他手边加一个火把光源，和自己拿火把一样照亮周围
+        if (pl.held === 24 && !pl.dn) { let v = (lamps.get(lampKey) || [])[0]; if (!v) { v = new THREE.Vector3(); v.torch = true; lamps.set(lampKey, [v]); } v.set(m.x, m.y + 1.3, m.z); } else lamps.delete(lampKey);
         Avatar.pose(pl.mesh, pl.ph, moved > 0.01 ? 1 : 0, pl.sw > 0 ? 1 - pl.sw / 0.3 + 0.01 : 0, pl.air && !swim, swim); if (pl.dn) { pl.mesh.rotation.x = 1.5; pl.mesh.visible = (pl.dnT = (pl.dnT || 0) + 1 / 60) < 2.5; } else if (pl.dnT) { pl.dnT = 0; pl.mesh.rotation.x = 0; m.set(pl.to[0], pl.to[1], pl.to[2]); pl.mesh.visible = true; } } // 对方倒下了：仰面躺着
       requestAnimationFrame(smooth);
     })();

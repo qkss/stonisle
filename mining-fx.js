@@ -1,6 +1,8 @@
 // Cached damage overlays and a bounded, instanced debris pool.
 (() => {
-  const palette={1:0x796047,2:0x876343,3:0x95948c,4:0xd5bf87,6:0xb7844b,7:0x668348,8:0xba8d57,9:0xa56348,10:0x8d8e88,11:0x52545a,12:0xa48673,13:0xbea45f,14:0x8abac2,15:0xe5edf0};
+  // 软的、散的方块（草地泥土、沙子、雪、树叶、茅草、粘液、花草）挖的时候只掉碎屑，不画裂痕：它们不会“裂开”
+  const SOFT=new Set([1,2,4,7,15,53,98,144,145,152,159,176,183,199]),soft=id=>SOFT.has(id)||!!(window.Core&&Core.PASS.has(id));
+  const palette={5:0x4a8fd8,1:0x796047,2:0x876343,3:0x95948c,4:0xd5bf87,6:0xb7844b,7:0x668348,8:0xba8d57,9:0xa56348,10:0x8d8e88,11:0x52545a,12:0xa48673,13:0xbea45f,14:0x8abac2,15:0xe5edf0};
   window.MiningFX=class {
     constructor(scene) {
       this.key='';this.clock=0;this.cursor=0;
@@ -38,7 +40,7 @@
       this.overlay.visible=false;
       const keep=new Set();
       for(const [key,r] of Object.entries(records)){
-        if(!visible(r))continue;keep.add(key);
+        if(!visible(r)||soft(r.id))continue;keep.add(key);
         let mesh=this.persistent.get(key);
         if(!mesh){mesh=new THREE.Mesh(this.overlay.geometry,this.stages[0]);mesh.renderOrder=2;mesh.position.set(r.x+.5,r.y+.5,r.z+.5);this.scene.add(mesh);this.persistent.set(key,mesh);}
         mesh.material=this.stages[Math.min(7,Math.floor(r.progress*8))];
@@ -48,7 +50,7 @@
     damage(hit,id,progress,dt){
       const key=`${hit.x},${hit.y},${hit.z}`;
       if(key!==this.key){this.clock=0;this.key=key;}
-      this.overlay.position.set(hit.x+.5,hit.y+.5,hit.z+.5);this.overlay.visible=true;
+      this.overlay.position.set(hit.x+.5,hit.y+.5,hit.z+.5);this.overlay.visible=!soft(id);
       this.damageMat.map=this.maps[Math.min(7,Math.floor(progress*8))];
       this.clock+=dt;if(this.clock>=.075){this.clock%=.075;this.emit(hit,id,2,false);}
     }

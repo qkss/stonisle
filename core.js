@@ -1,13 +1,20 @@
 // 岩屿 Stonisle — 纯逻辑核心（不依赖 Three.js / DOM，浏览器与 node 通用）
 (function (root) {
-  const CH = 16, H = 64, SEA = 22;
+  const Cereals=typeof module!=='undefined'?require('./cereal-crops.js'):root.CerealCrops;
+  const HerbGrades=typeof module!=='undefined'?require('./herb-varieties.js'):root.HerbVarieties;
+  const Railgun=typeof module!=='undefined'?require('./quantum-railgun-core.js'):root.QuantumRailgunCore;
+  const Transit=typeof module!=='undefined'?require('./transit-core.js'):root.TransitCore;
+  const CH = 16, H = 96, SEA = 22;
   const AIR = 0, MOSS = 1, DIRT = 2, STONE = 3, SAND = 4, WATER = 5, LOG = 6, LEAF = 7;
   const COAL = 11, IRON = 12, GOLD = 13, CRYSTAL = 14, SNOW = 15;
   const GLASS = 50, LAMP = 59;                    // 第一批建筑方块（PRD FR-019）用 50–59；20–49 留给工具和物品
-  const SHAPED = id => id === 179 || PLANTS[id] !== undefined || (id >= 160 && id <= 175) || (id >= 60 && id <= 75) || (id >= 184 && id <= 195) || (id >= 200 && id <= 243) || (id >= 248 && id <= 255);      // 不是整格的方块：门、窗、床、花、浆果丛、树苗、告示牌（PRD FR-18/19），外形见 meshChunk 里的 shape()
+  const SHAPED = id => (id>=620&&id<=622)|| Transit.relay(id)||id===Transit.RAIL||Railgun.isBlock(id) || id === 299 || id === 55 || id === 179 || PLANTS[id] !== undefined || (id >= 160 && id <= 175) || (id >= 60 && id <= 75) || (id >= 184 && id <= 195) || (id >= 200 && id <= 243) || (id >= 248 && id <= 255);      // 不是整格的方块：门、窗、床、花、浆果丛、树苗、告示牌（PRD FR-18/19），外形见 meshChunk 里的 shape()
   // 新植物（farm.js 管种植和生长）：贴图 61、62 两格各切成四小块（qx、qy：第几列、第几行），一小块是一种花或一截茎叶。
   // stem：下面绿茎的高度（借用花那一格贴图的下半截）；top：整株的高度，可以超过一格（向日葵）。
   const PLANTS = {
+    310:{name:'赤灵芝',tile:87,full:true,stem:0,top:.55},
+    311:{name:'霜雪莲',tile:88,full:true,stem:0,top:.65},
+    312:{name:'紫露草',tile:89,full:true,stem:0,top:.8},
     77: { name: '玫瑰', tile: 61, qx: 0, qy: 0, stem: 0.45, top: 0.9 },
     78: { name: '向日葵', tile: 61, qx: 1, qy: 0, stem: 0.8, top: 1.4 },
     79: { name: '百合', tile: 61, qx: 0, qy: 1, stem: 0.45, top: 0.95 },
@@ -18,13 +25,19 @@
     116: { name: '红蘑菇', tile: 69, qx: 0, qy: 0, stem: 0, top: 0.5 }, 117: { name: '棕蘑菇', tile: 69, qx: 1, qy: 0, stem: 0, top: 0.5 },
     118: { name: '白蘑菇', tile: 69, qx: 0, qy: 1, stem: 0, top: 0.5 }, // 原来还有黄蘑菇（179），编号让给了篝火
   };
+  for(let i=0;i<6;i++){
+    if(i>=3)PLANTS[310+i]={name:['月华花','金线参','碧心草'][i-3],tile:87+i,full:true,stem:0,top:[.85,.65,.7][i-3]};
+    for(let j=0;j<2;j++)PLANTS[330+i*2+j]={...PLANTS[310+i],name:PLANTS[310+i].name+(j?'·生长期':'·幼苗'),tile:93+Math.floor(i/2),quadrant:[j,i%2],top:PLANTS[310+i].top*(j?.65:.3)};
+  }
+  for(const d of HerbGrades.list){PLANTS[d.id]={name:d.name,tile:d.tile,full:true,stem:0,top:d.top};for(const [phase,id] of [d.young,d.growing].entries())PLANTS[id]={...PLANTS[d.id],name:d.name+(phase?'·生长期':'·幼苗'),tile:106,quadrant:[phase,d.family],top:d.top*(phase?.65:.3)};}
   const GRANITE = 154, MARBLE = 155, QUARTZ = 156, SLATE = 157, COBBLE = 158; // 更多天然岩石（贴图 64–68）
   const PUMPKIN = 119, MELON = 143, CHERRY_LEAF = 144, APPLE_LEAF = 145, MANGO_LEAF = 152, MUSHROOMS = [116, 117, 118], CAMPFIRE = 179; // 南瓜、西瓜（整格方块）；樱花、苹果、芒果树的树冠
   const BANANA_LEAF = 159, GRAPE_VINE = 176, LYCHEE_LEAF = 199; // 香蕉树、荔枝树的树冠，和长在草地上的葡萄藤
   const SLIME = 183; // 粘液方块：史莱姆掉落，踩上去会弹起来（game.js）
   const FARMLAND = 98, WILD_FLOWERS = [68, 69, 70, 77, 78, 79, 87, 88];
-  const PASS = new Set([62, 63, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 79, 87, 88, 89, 99, 116, 117, 118, 179]); // 可以走过去的：打开的门、植物、告示牌
-  const see = id => id === LEAF || id === GLASS || SHAPED(id); // 看得穿的方块：不挡后面的面，也不算“头顶有遮挡”
+  for(const d of Cereals.list)for(const [id,tile,label,top] of [[d.id,d.tile,'',d.top],[d.young,d.youngTile,'·幼苗',.3],[d.growing,d.growingTile,'·生长期',.65]])PLANTS[id]={name:d.name+label,tile,full:true,stem:0,top};
+  const PASS = new Set([610,...Cereals.list.flatMap(d=>[d.id,d.young,d.growing]),...HerbGrades.list.flatMap(d=>[d.id,d.young,d.growing]),313,314,315,...Array.from({length:12},(_,i)=>330+i),310,311,312,62, 63, 68, 69, 70, 71, 72, 73, 74, 75, 77, 78, 79, 87, 88, 89, 99, 116, 117, 118, 179]); // 可以走过去的：打开的门、植物、告示牌
+  const see = id => id === LEAF || id === CHERRY_LEAF || id === GLASS || !!GLASS_TINT[id] || SHAPED(id); // 看得穿的方块：不挡后面的面，也不算“头顶有遮挡”
   // id -> [顶面, 侧面, 底面] 在贴图集里的格子号
   const BLOCKS = [
     null,
@@ -60,6 +73,16 @@
   BLOCKS[BANANA_LEAF] = { name: '香蕉树叶', tiles: [78, 78, 78] }; BLOCKS[GRAPE_VINE] = { name: '葡萄藤', tiles: [79, 79, 79] }; BLOCKS[LYCHEE_LEAF] = { name: '荔枝树叶', tiles: [80, 80, 80] };
   BLOCKS[FARMLAND] = { name: '耕地', tiles: [63, 2, 2] }; // 顶面是翻过的土，侧面和底面是泥土
   BLOCKS[96] = { name: '荧光玻璃', tiles: [47, 47, 47] }; BLOCKS[97] = { name: '冰灯', tiles: [48, 48, 48] }; // 怪物掉落做的两种发亮的装饰方块（自己亮，不照亮周围）
+  // 280–286 无框彩色玻璃：共用一张近白的贴图（81），颜色乘在顶点色上，画进单独的半透明网格（meshChunk 的 glass）。
+  // 287 岩浆（不挡路，像水一样流，碰到会烫伤，见 blast.js）、288 炸药、289 熔炉。0–255 已经用满，区块数据改成 Uint16Array。
+  const GLASS_TINT = { 280: [1, 1, 1], 281: [.78, .52, .3], 282: [.55, .78, 1], 283: [1, .62, .78], 284: [.58, .95, .66], 285: [1, .86, .38], 286: [.74, .58, 1] };
+  const LAVA = 287, TNT = 288, FURNACE = 289;
+  ['无框玻璃', '茶色玻璃', '天蓝玻璃', '粉色玻璃', '薄荷玻璃', '琥珀玻璃', '紫色玻璃'].forEach((name, i) => { BLOCKS[280 + i] = { name, tiles: [81, 81, 81] }; });
+  BLOCKS[LAVA] = { name: '岩浆', tiles: [82, 82, 82] }; BLOCKS[TNT] = { name: '炸药', tiles: [83, 84, 83] }; BLOCKS[FURNACE] = { name: '熔炉', tiles: [85, 86, 85] };
+  for(let i=0;i<6;i++)BLOCKS[600+i]={name:'量子中继器',tiles:[65,48,65]};BLOCKS[610]={name:'铁轨',tiles:[65,8,65]};BLOCKS[611]={name:'货运车厢',tiles:[8,45,65]};for(const [id,name] of [[620,'执行器'],[621,'触发器'],[622,'侦测器']])BLOCKS[id]={name,tiles:[123,123,123]};BLOCKS[612]={name:'发动机',tiles:[67,65,67]};
+  for(const t of Railgun.tiers)for(let i=0;i<6;i++)BLOCKS[Railgun.secondaryId(t.base+i)]=BLOCKS[t.base+i]={name:t.name+'量子轨道炮',tiles:[65,67,65]};
+  BLOCKS[299]={name:'铸币机',tiles:[23,24,23]};
+  PASS.add(LAVA);
   // 80–86 矿物与宝石（地下生成），90–95 不同颜色的建材（合成）
   const OBSIDIAN = 80, CALCITE = 81, AMETHYST = 82, DIAMOND = 83, RUBY = 84, EMERALD = 85, SAPPHIRE = 86;
   [['黑曜石', 32], ['方解石', 33], ['紫水晶', 34], ['钻石矿', 35], ['红宝石矿', 36], ['绿宝石矿', 37], ['蓝宝石矿', 38]]
@@ -91,7 +114,21 @@
   const stairInfo=id=>id>=200&&id<=215?{wood:Math.floor((id-200)/4),dir:(id-200)%4,up:false}:id>=224&&id<=239?{wood:Math.floor((id-224)/4),dir:(id-224)%4,up:true}:null;
   const slabInfo=id=>id>=216&&id<=219?{wood:id-216,half:0}:id>=240&&id<=243?{wood:id-240,half:1}:id>=244&&id<=247?{wood:id-244,half:2}:null;
   // Local collision boxes are also used for mesh construction and targeting.
+  // Roof tiles share a height profile for rendering, collision and selection.
+  function roofHeight(get,x,y,z,u,v){
+    if(get(x,y+1,z)===55)return 1;
+    const high=[];
+    for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]])if(get(x+dx,y+1,z+dz)===55)high.push(dx===1?u:dx===-1?1-u:dz===1?v:1-v);
+    if(high.length)return Math.max(.04,Math.min(...high));
+    for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]])if(get(x+dx,y+1,z+dz)===55)return Math.max(.04,Math.min(dx===1?u:1-u,dz===1?v:1-v));
+    return 1;
+  }
   function shapeBoxes(id,get=()=>0,x=0,y=0,z=0){
+    if(Transit.relay(id)||id===610)return Transit.parts(id,get,x,y,z).map(q=>{if(!q[8]&&!q[9])return q;const cx=(q[0]+q[3])/2,cy=(q[1]+q[4])/2,cz=(q[2]+q[5])/2,c=Math.cos(q[8]||0),s=Math.sin(q[8]||0),cp=Math.cos(q[9]||0),sp=Math.sin(q[9]||0),points=[];for(const xx of [q[0],q[3]])for(const yy of [q[1],q[4]])for(const zz of [q[2],q[5]]){const dx=xx-cx,dy=yy-cy,dz=(zz-cz)*cp-dy*sp;points.push([cx+dx*c+dz*s,cy+dy*cp+(zz-cz)*sp,cz-dx*s+dz*c]);}return [0,1,2].map(a=>Math.min(...points.map(p=>p[a]))).concat([0,1,2].map(a=>Math.max(...points.map(p=>p[a]))));});
+    if(Railgun.isBlock(id))return Railgun.parts(id);
+    if(id===299)return [[.08,0,.08,.92,.18,.92],[.15,.18,.15,.3,.9,.85],[.7,.18,.15,.85,.9,.85],[.12,.82,.12,.88,1,.88],[.42,.48,.35,.58,.84,.65],[.3,.33,.25,.7,.48,.75],[.25,.18,.25,.75,.28,.75]];
+    if(id===55){const out=[];for(let a=0;a<8;a++)for(let b=0;b<8;b++)out.push([a/8,0,b/8,(a+1)/8,Math.max(roofHeight(get,x,y,z,a/8,b/8),roofHeight(get,x,y,z,(a+1)/8,(b+1)/8)),(b+1)/8]);return out;}
+
     const ladder=ladderInfo(id);
     if(ladder){const boxes=[[.18,0,.04,.26,1,.14],[.74,0,.04,.82,1,.14]];for(const h of [.12,.37,.62,.87])boxes.push([.22,h,.06,.78,h+.075,.16]);
       return boxes.map(q=>{for(let i=0;i<ladder.dir;i++)q=[1-q[5],q[1],q[0],1-q[2],q[4],q[3]];return q;});}
@@ -122,7 +159,21 @@
     return [[0,0,0,1,1,1]];
   }
   const CAVE = 0.075;       // 洞穴粗细
-  const ATLAS_TILES = 96; // 贴图集一行 96 格（原来 64 格用满了；标准包宽 6144 像素，精细包 12288）
+  // Bed half boxes: length runs along +x; the head half includes a small raised pillow.
+  function bedParts(head,ns=false){
+    const lo=head?0:.081,hi=head?.919:1;
+    const q=[[lo,.20,.06,hi,.31,.94,9],[lo,.31,.07,hi,.45,.93,87],
+      [lo,.30,.04,hi,.34,.07,89],[lo,.30,.93,hi,.34,.96,89]];
+    const end=head?.90:.02;
+    for(const z of [.08,.80])q.push([end,0,z,end+.08,.25,z+.12,9]);
+    q.push([head?.92:0,.25,.04,head?1:.08,head?.73:.43,.96,9]);
+    if(head){
+      q.push([0,.45,.06,.45,.50,.94,88],[.32,.49,.06,.46,.525,.94,87]);
+      q.push([.52,.45,.18,.88,.49,.82,87],[.54,.49,.20,.86,.56,.80,87],[.57,.56,.23,.83,.575,.77,87]);
+    }else q.push([.07,.45,.06,1,.50,.94,88]);
+    return ns?q.map(([a,b,c,d,e,f,t])=>[c,b,a,f,e,d,t]):q;
+  }
+  const ATLAS_TILES = 124; // 贴图集 108 格，96–106 为年份药材及幼苗
 
   // ---- 噪声 / 地形 ----
   function hash(x, z, s) {
@@ -153,7 +204,7 @@
   function heightAt(x, z) {
     const n = vnoise(x / 48, z / 48, 1) * 0.6 + vnoise(x / 20, z / 20, 2) * 0.3 + vnoise(x / 8, z / 8, 3) * 0.1;
     const r = Math.max(0, vnoise(x / 90, z / 90, 13) - 0.55);          // 山脉：低频噪声超过阈值的地方隆起
-    return Math.min(H - 6, Math.floor(10 + n * 34 + r * r * 260));
+    return Math.min(58, Math.floor(10 + n * 34 + r * r * 260));
   }
   // 群系：0 草原 / 1 沙漠 / 2 雪原
   // ---- 生成规则的版本 ----
@@ -301,11 +352,24 @@
     }
   }
 
+  function rareHerbAt(x,z,h,ground){
+    const r=hash(x,z,9317),special=hash(x,z,19427);
+    if(ground===SNOW&&h>=40&&special<.004)return 350+HerbGrades.tier(hash(x,z,19428));
+    if(ground===MOSS&&h>SEA+3&&h<44&&special<.002)return 355+HerbGrades.tier(hash(x,z,19428));
+    if(ground===SNOW&&h>=40&&r<.009)return 311;
+    if(ground===MOSS&&h>SEA+1&&h<40&&climateAt(x,z)!==0&&r<.003)return 310;
+    if(ground===MOSS&&h>SEA&&h<=SEA+7&&r>.994)return 312;
+    if(ground===MOSS&&h>SEA+4&&r>.989&&r<.992)return 313;
+    if(ground===MOSS&&h>=30&&r>.985&&r<.987)return 314;
+    if(ground===MOSS&&h>SEA&&h<SEA+5&&r>.981&&r<.984)return 315;
+    if(ground===MOSS&&h>SEA&&h<38&&r>.974&&r<.98)return 430+Math.min(3,Math.floor(hash(x,z,99112)*4));
+    return 0;
+  }
   function genChunk(cx, cz, gen = GEN) {
     const v = homeChunk(cx, cz) ? 1 : gen; // 这个区块按哪一版规则生成
-    const d = new Uint8Array(CH * CH * H), x0 = cx * CH, z0 = cz * CH;
+    const d = new Uint16Array(CH * CH * 64), x0 = cx * CH, z0 = cz * CH;
     const put = (x, y, z, id, onlyAir) => {
-      if (x < 0 || x >= CH || z < 0 || z >= CH || y < 0 || y >= H) return;
+      if (x < 0 || x >= CH || z < 0 || z >= CH || y < 0 || y >= 64) return;
       const i = x + z * CH + y * CH * CH;
       if (!onlyAir || d[i] === AIR) d[i] = id;
     };
@@ -329,6 +393,11 @@
         else if (zone === 1 && r > 0.035 && r < 0.038) { put(x, h + 1, z, GRAPE_VINE); if (hash(wx, wz, 83) < 0.5) put(x, h + 2, z, GRAPE_VINE); } // 葡萄藤：中部草地上一两格高的一丛
         else if (zone && r > 0.9 && hash(wx >> 3, wz >> 3, 79) < (zone === 2 ? 0.14 : 0.02)) { const n = 3 + Math.floor(hash(wx, wz, 80) * 4); for (let k = 1; k <= n; k++) put(x, h + k, z, 89); } // 竹丛：南方成片，中部偶尔有，北方没有
       }
+    }
+    // Sparse medicinal plants: coordinate hashing keeps generation stable across reloads.
+    for(let z=0;z<CH;z++)for(let x=0;x<CH;x++){
+      const wx=x0+x,wz=z0+z,h=heightAt(wx,wz),base=d[x+z*CH+h*CH*CH],at=x+z*CH+(h+1)*CH*CH;
+      const herb=rareHerbAt(wx,wz,h,base);if(herb&&h<H-2&&!d[at]&&!inVillage(wx,wz))put(x,h+1,z,herb);
     }
     // 树可能跨区块：扫描外扩 6 格内的树（枝最远伸出 4 格，枝头的树冠再 2 格），只写落在本区块的部分
     for (let z = -6; z < CH + 6; z++) for (let x = -6; x < CH + 6; x++) {
@@ -413,6 +482,7 @@
       if (!d) {
         const e = this.edits[k];
         d = this.gen(cx, cz, e ? (e.g ? +String(e.g).slice(1) : 1) : GEN); // 动过的区块按当时记下的版本生成（旧存档没记，就是第 1 版）；没动过的用最新版
+        if(d.length<CH*CH*H){const taller=new Uint16Array(CH*CH*H);taller.set(d);d=taller;}
         if (e) for (const i in e) if (i !== 'g') d[i] = e[i];
         this.chunks.set(k, d);
       }
@@ -538,7 +608,8 @@
   function meshChunk(world, cx, cz) {
     const data = world.chunk(cx, cz), x0 = cx * CH, z0 = cz * CH;
     const mk = () => ({ pos: [], nor: [], uv: [], col: [], idx: [], flow: [], foam: [], wind: [] });
-    const solid = mk(), water = mk(), leaves=mk(), grass=mk();
+    const railgunRanges = [];
+    const solid = mk(), water = mk(), leaves=mk(), grass=mk(), glass=mk(),cherry=mk();
     const at = (x, y, z) => {
       if (y < 0) return STONE;
       if (y >= H) return AIR;
@@ -577,12 +648,24 @@
     };
     const PETAL = { 68: [1, 0.3, 0.3], 69: [1, 0.86, 0.25], 70: [0.4, 0.55, 1] }, PLAIN = [0.95, 0.95, 0.95];
     const shape = (b, x, y, z) => {
-      if(b>=200&&b<=243||ladderInfo(b)){for(const q of shapeBoxes(b,at,x,y,z))slab(x+q[0],y+q[1],z+q[2],x+q[3],y+q[4],z+q[5],BLOCKS[b].tiles[1]);return;}
+      if(b===55){
+        const h=(u,v)=>roofHeight(at,x,y,z,u,v),tile=BLOCKS[55].tiles[1];
+        function tri(A,B,C){const ab=B.map((n,i)=>n-A[i]),ac=C.map((n,i)=>n-A[i]);let n=[ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],ab[0]*ac[1]-ab[1]*ac[0]],len=Math.hypot(...n);if(len<1e-8)return;n=n.map(v=>v/len);const base=solid.pos.length/3,l=.75+.2*Math.max(0,n[1]);for(const p of [A,B,C]){solid.pos.push(x+p[0],y+p[1],z+p[2]);solid.nor.push(...n);solid.uv.push((tile+.01+p[0]*.98)/ATLAS_TILES,.01+(Math.abs(n[1])>.1?p[2]:p[1])*.98);solid.col.push(l,l*.98,l*.94);}solid.idx.push(base,base+1,base+2);}
+        if(at(x,y+1,z)!==55)for(let a=0;a<2;a++)for(let c=0;c<2;c++){const u=a/2,v=c/2,U=u+.5,V=v+.5,A=[u,h(u,v),v],B=[u,h(u,V),V],C=[U,h(U,V),V],D=[U,h(U,v),v];tri(A,B,C);tri(A,C,D);}
+        for(const [u,v,U,V,dx,dz] of [[0,0,1,0,0,-1],[1,0,1,1,1,0],[1,1,0,1,0,1],[0,1,0,0,-1,0]]){if(at(x+dx,y,z+dz)===55)continue;const A=[u,0,v],B=[u,h(u,v),v],C=[U,h(U,V),V],D=[U,0,V];tri(A,B,C);tri(A,C,D);}
+        if(at(x,y-1,z)===0){tri([0,0,0],[1,0,0],[1,0,1]);tri([0,0,0],[1,0,1],[0,0,1]);}return;
+      }
+
+      if(b>=620&&b<=622)return;
+      if(Transit.relay(b)||b===610){for(const q of Transit.parts(b,at,x,y,z)){const start=solid.pos.length;slab(x+q[0],y+q[1],z+q[2],x+q[3],y+q[4],z+q[5],q[6]);const angle=q[8]||0,c=Math.cos(angle),s=Math.sin(angle),cx=x+(q[0]+q[3])/2,cz=z+(q[2]+q[5])/2,cy=y+(q[1]+q[4])/2,cp=Math.cos(q[9]||0),sp=Math.sin(q[9]||0);for(let i=start;i<solid.pos.length;i+=3){const dx=solid.pos[i]-cx,dy=solid.pos[i+1]-cy,oz=solid.pos[i+2]-cz,dz=oz*cp-dy*sp,nx=solid.nor[i],ny=solid.nor[i+1],nz=solid.nor[i+2]*cp-ny*sp;solid.pos[i+1]=cy+dy*cp+oz*sp;solid.nor[i+1]=ny*cp+solid.nor[i+2]*sp;solid.pos[i]=cx+dx*c+dz*s;solid.pos[i+2]=cz-dx*s+dz*c;solid.nor[i]=nx*c+nz*s;solid.nor[i+2]=-nx*s+nz*c;if(q[7]!==undefined){solid.col[i]*=(q[7]>>16&255)/255;solid.col[i+1]*=(q[7]>>8&255)/255;solid.col[i+2]*=(q[7]&255)/255;}}}return;}
+      if(Railgun.isBlock(b)){const vertexStart=solid.pos.length;for(const q of Railgun.parts(b)){const start=solid.col.length;slab(x+q[0],y+q[1],z+q[2],x+q[3],y+q[4],z+q[5],q[6]);if(q[7]!==undefined){const tint=[(q[7]>>16&255)/255,(q[7]>>8&255)/255,(q[7]&255)/255];for(let i=start;i<solid.col.length;i++)solid.col[i]*=tint[(i-start)%3];}}railgunRanges.push({x:x+x0,y,z:z+z0,start:vertexStart,end:solid.pos.length});return;}
+      if(b===299||b>=200&&b<=243||ladderInfo(b)){for(const q of shapeBoxes(b,at,x,y,z))slab(x+q[0],y+q[1],z+q[2],x+q[3],y+q[4],z+q[5],BLOCKS[b].tiles[1]);return;}
       if(b===CAMPFIRE){ // 篝火：四角四块石头，中间两根交叉的木柴
         for(const [sx,sz] of [[.06,.06],[.72,.06],[.06,.72],[.72,.72]])slab(x+sx,y,z+sz,x+sx+.22,y+.16,z+sz+.22,3);
         slab(x+.16,y,z+.4,x+.84,y+.2,z+.6,6);slab(x+.4,y+.04,z+.16,x+.6,y+.24,z+.84,6);return;
       }
       const plant=PLANTS[b];
+      if(plant?.full){const q=plant.quadrant;cross(x,y,z,plant.tile,q?(q[1]? .01:.51):.01,q?(q[1]? .49:.99):.99,0,plant.top,PLAIN,q?q[0]*.5+.01:.01,q?q[0]*.5+.49:.99,.72);return;}
       if(plant){ // 新植物：下面一截绿茎，上面是贴图里的那一小块
         if(plant.stem)cross(x,y,z,29,0.01,0.5,0,plant.stem,PLAIN);
         cross(x,y,z,plant.tile,plant.qy?0.01:0.51,plant.qy?0.49:0.99,plant.stem,plant.top,PLAIN,plant.qx?0.51:0.01,plant.qx?0.99:0.49,plant.stem?(b===78?.85:.65):1);return;
@@ -598,7 +681,7 @@
       else if (b === 65) slab(x + 0.45, y, z, x + 0.55, y + 1, z + 1, 17);
       else if (b === 66 || b === 67) { // 床：木床架上铺被子；另一头没有同伴的那半是枕头
         const head = b === 66 ? at(x + 1, y, z) !== 66 : at(x, y, z + 1) !== 67;
-        slab(x, y, z, x + 1, y + 0.4, z + 1, 9); slab(x + 0.03, y + 0.4, z + 0.03, x + 0.97, y + 0.56, z + 0.97, head ? 16 : 28);
+        for(const q of bedParts(head,b===67))slab(x+q[0],y+q[1],z+q[2],x+q[3],y+q[4],z+q[5],q[6]);
       } else if (PETAL[b]) { cross(x, y, z, 29, 0.01, 0.5, 0, 0.4, PLAIN); cross(x, y, z, 29, 0.5, 0.99, 0.4, 0.8, PETAL[b]); } // 下半绿茎，上半花朵染色
       else if (b === 74 || b === 75) { // 告示牌：一根木桩顶着一块牌子
         slab(x + 0.45, y, z + 0.45, x + 0.55, y + 0.5, z + 0.55, 9);
@@ -681,9 +764,10 @@
           }
         }
       }
-      if(b===LEAF){
+      if(b===LEAF||b===CHERRY_LEAF){
+        const blossom=b===CHERRY_LEAF,cluster=blossom?cherry:leaves;
         const wx=x0+x,wz=z0+z,seed=hash(wx,wz,y+87);
-        const dense=FACES.filter(f=>at(x+f.d[0],y+f.d[1],z+f.d[2])===LEAF).length;
+        const dense=FACES.filter(f=>at(x+f.d[0],y+f.d[1],z+f.d[2])===b).length;
         // Four independently oriented branch cards give depth from above and from the side.
         for(let card=0;card<4;card++){
           const angle=seed*6.283+card*2.05,pitch=card===3?1.08:(hash(wx,wz,y+card+99)-.5)*.8;
@@ -691,18 +775,18 @@
           const normal=[-Math.sin(angle)*Math.cos(pitch),-Math.sin(pitch),Math.cos(angle)*Math.cos(pitch)];
           const center=[x+.5+Math.cos(angle)*.12,y+.48+(card%2)*.13,z+.5+Math.sin(angle)*.12];
           const width=.98+hash(wx,wz,y+card+111)*.14,height=.88;
-          const base=leaves.pos.length/3,shade=(dense>=5?.72:.9)*(0.85+hash(wx,wz,y+card+114)*.15);
+          const base=cluster.pos.length/3,shade=(dense>=5?.72:.9)*(0.85+hash(wx,wz,y+card+114)*.15);
           for(const [a,b] of [[0,0],[1,0],[1,1],[0,1]]){
-            for(let axis=0;axis<3;axis++)leaves.pos.push(center[axis]+(a-.5)*width*u[axis]+(b-.5)*height*v[axis]);
-            leaves.nor.push(...normal);leaves.uv.push(a,b);leaves.col.push(shade*.94,shade,shade*.88);
-            leaves.wind.push((a+b)*.5,seed*6.283);
+            for(let axis=0;axis<3;axis++)cluster.pos.push(center[axis]+(a-.5)*width*u[axis]+(b-.5)*height*v[axis]);
+            cluster.nor.push(...normal);cluster.uv.push(a,b);cluster.col.push(shade,shade*(blossom?.96:1),shade*(blossom?.98:.88));
+            cluster.wind.push((a+b)*.5,seed*6.283);
           }
-          leaves.idx.push(base,base+1,base+2,base,base+2,base+3);
+          cluster.idx.push(base,base+1,base+2,base,base+2,base+3);
         }
         continue;
       }
       if (SHAPED(b)) { shape(b, x, y, z); continue; }
-      const out = b === WATER ? water : solid;
+      const out = b === WATER ? water : GLASS_TINT[b] ? glass : solid, tint = GLASS_TINT[b] || [1, 1, 1];
       const waterVisual = b === WATER && world.water ? world.water.visual(x0+x,y,z0+z) : null;
       for (const f of FACES) {
         const n = at(x + f.d[0], y + f.d[1], z + f.d[2]);
@@ -731,8 +815,8 @@
             const A = occ(x + s1[0], y + s1[1], z + s1[2]), B = occ(x + s2[0], y + s2[1], z + s2[2]);
             ao[i] = A && B ? 0 : 3 - A - B - occ(x + cr[0], y + cr[1], z + cr[2]);
           }
-          const l = b === LAMP || b === 96 || b === 97 ? 1.3 : f.s * (0.5 + ao[i] / 6) * (world.lighting ? 1 : cov) * glow; // 天空遮挡由光照模块单独处理，不压暗局部光源
-          const surface=b===WATER&&world.water?world.water.corner(x0+x+f.c[i][0],y,z0+z+f.c[i][2]):top;
+          const l = b === LAMP || b === 96 || b === 97 || b === LAVA ? 1.3 : f.s * (0.5 + ao[i] / 6) * (world.lighting ? 1 : cov) * glow; // 天空遮挡由光照模块单独处理，不压暗局部光源
+          const surface=b===WATER&&world.water?world.water.corner(x0+x+f.c[i][0],y,z0+z+f.c[i][2]):b===LAVA&&world.lava?world.lava.corner(x0+x+f.c[i][0],y,z0+z+f.c[i][2]):top; // 岩浆和水一样：流出去的越远越低
           out.pos.push(x + f.c[i][0], y + f.c[i][1] * surface, z + f.c[i][2]);
           out.nor.push(f.d[0], f.d[1], f.d[2]);
           // World-coordinate seed: unchanged by chunk rebuilds or save/load.
@@ -745,7 +829,7 @@
             warm=(hash(x0+x,y*173+z0+z,1683)-.5)*.07;
           }
           out.uv.push((tile + tu) / ATLAS_TILES, tv);
-          out.col.push(l*tone*(1+warm), l*.98*tone, l*(1.14-.22*l)*tone*(1-warm)); // 亮面偏暖、暗面偏冷
+          out.col.push(l*tone*(1+warm)*tint[0], l*.98*tone*tint[1], l*(1.14-.22*l)*tone*(1-warm)*tint[2]); // 亮面偏暖、暗面偏冷
           if(b===WATER){out.flow.push(...(waterVisual?waterVisual.flow:[0,0,0,1]));out.foam.push(waterVisual?waterVisual.foam:0);}
         }
         // 沿 AO 更平滑的对角线切分
@@ -754,7 +838,7 @@
       }
     }
     const pack = m => ({ pos: new Float32Array(m.pos), nor: new Float32Array(m.nor), uv: new Float32Array(m.uv), col: new Float32Array(m.col), idx: new Uint32Array(m.idx), flow: new Float32Array(m.flow), foam: new Float32Array(m.foam), wind:new Float32Array(m.wind) });
-    return { solid: pack(solid), water: pack(water), leaves:pack(leaves), grass:pack(grass) };
+    return { railgunRanges, solid: pack(solid), water: pack(water), leaves:pack(leaves), grass:pack(grass), glass:pack(glass),cherry:pack(cherry) };
   }
 
   // ---- 射线选方块（体素 DDA），忽略空气和水 ----
@@ -765,8 +849,8 @@
     let n = [0, 0, 0], t = 0;
     while (t <= max) {
       const b = get(p[0], p[1], p[2]);
-      if (b !== AIR && b !== WATER) {
-        if((b<200||b>243)&&!ladderInfo(b))return { x:p[0],y:p[1],z:p[2],n,t,point:o.map((v,i)=>v+d[i]*t) };
+      if (b !== AIR && b !== WATER && b !== LAVA) {
+        if(b!==610&&b!==55&&(b<200||b>243)&&!ladderInfo(b))return { x:p[0],y:p[1],z:p[2],n,t,point:o.map((v,i)=>v+d[i]*t) };
         let best=null;
         for(const q of shapeBoxes(b,get,...p)){
           let enter=0,leave=max,normal=[0,0,0],valid=true;
@@ -788,6 +872,6 @@
   }
 
   const cobbleModel=()=>{const out={pos:[],nor:[],uv:[],col:[],idx:[]};for(const f of FACES)cobbleFace(out,0,0,0,f,0,0,0,f.s);return out;};
-  const Core = { CAMPFIRE, cobbleModel, GEN, climateAt, SLIME, PLANTS, FARMLAND, villageIn, REGION, CH, H, SEA, AIR, WATER, STONE, GLASS, LAMP, PASS, see, WOODS, doorBase, isChest, woodLogAt, shapeBoxes, stairInfo, slabInfo, ladderInfo, ladderSupported, hash, biomeAt, caveAt, BLOCKS, ATLAS_TILES, heightAt, genChunk, World, meshChunk, raycast };
+  const Core = { rareHerbAt, roofHeight, bedParts, GLASS_TINT, LAVA, TNT, FURNACE, CAMPFIRE, cobbleModel, GEN, climateAt, SLIME, PLANTS, FARMLAND, villageIn, REGION, CH, H, SEA, AIR, WATER, STONE, GLASS, LAMP, PASS, see, WOODS, doorBase, isChest, woodLogAt, shapeBoxes, stairInfo, slabInfo, ladderInfo, ladderSupported, hash, biomeAt, caveAt, BLOCKS, ATLAS_TILES, heightAt, genChunk, World, meshChunk, raycast };
   if (typeof module !== 'undefined') module.exports = Core; else root.Core = Core;
 })(this);
